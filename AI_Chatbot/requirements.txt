@@ -1,0 +1,7 @@
+langchain>=0.1.14
+langchain-community
+langchain-huggingface
+langchain-ollama
+faiss-cpu
+unstructured
+PyPDF2
