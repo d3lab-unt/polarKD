@@ -60,9 +60,100 @@ It uses advanced keyword extraction (TF-IDF, YAKE, KeyBERT) and LLM-based relati
 ```bash
 git clone https://github.com/your-username/pdf-knowledge-graph.git
 cd pdf-knowledge-graph
+``` 
 
 ### 2. Create a Virtual Environment
 ```bash
 python3 -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+### 3. Install Dependencies
+```bash
+pip install -r requirements.txt
+```
+
+### 4. Install and Run Ollama
+Install Ollama and pull the LLaMA3 model:
+```bash
+ollama run llama3
+```
+
+### 5. Run the Streamlit App
+```bash
+streamlit run frontend.py
+```
+
+---
+
+## Project Folder Structure
+```bash
+pdf-knowledge-graph/
+├── frontend.py              # Streamlit frontend app
+├── keywords_extraction.py   # Extract keywords and relations
+├── neo4j_storage.py         # Neo4j database interaction
+├── storing.py               # Optional CLI mode to process PDFs
+├── requirements.txt         # Python dependencies
+└── README.md                # Project documentation
+```
+
+---
+
+## How It Works
+
+### 1. PDF Upload
+Upload one or more PDF documents via Streamlit.
+
+###  Text Extraction
+Extracts text using `pdfplumber` from uploaded PDFs.
+
+### Keyword Extraction
+- If a "Keywords" section exists, directly extract those keywords.
+- Otherwise, fallback to automatic extraction using TF-IDF, YAKE, and KeyBERT.
+- For multiple PDFs, automatically extract roughly `k/n` keywords per PDF (where n = number of PDFs).
+
+###  Relation Extraction
+Keyword pairs are passed to a LLaMA3 model running locally via Ollama to infer semantic relations.
+
+### Knowledge Graph Construction
+Nodes (keywords) and edges (relations) are inserted into a Neo4j database.
+
+### Visualization
+A PyVis network graph is generated and displayed inside the Streamlit app.
+
+### Export Options
+Users can download the extracted relations as CSV or JSON files.
+
+---
+
+## Example Workflow
+
+ Upload PDFs → Extract Keywords → Find Relations → Visualize Knowledge Graph
+
+---
+
+## Future Enhancements
+
+- OCR support for scanned PDFs (using Tesseract)
+- Interactive graph editing (merging/splitting nodes)
+- Fine-tune LLaMA3 model for specific domains
+- Automatic summarization of graphs
+- Full-fledged web application with user login support
+
+---
+
+##  Author
+
+**Ajith Kumar Dugyala**  
+Email: ajithdugyala@gmail.com  
+Location: Denton, Texas, USA
+
+---
+
+## Final Notes
+
+This project is fully local and privacy-focused.  
+It can be extended for domain-specific research, scientific knowledge graph generation, or intelligent document summarization.
+
+---
 
