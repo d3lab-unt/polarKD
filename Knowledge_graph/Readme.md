@@ -60,3 +60,9 @@ It uses advanced keyword extraction (TF-IDF, YAKE, KeyBERT) and LLM-based relati
 ```bash
 git clone https://github.com/your-username/pdf-knowledge-graph.git
 cd pdf-knowledge-graph
+
+### 2. Create a Virtual Environment
+```bash
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
