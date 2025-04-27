@@ -2,7 +2,7 @@
 A local, private, and intelligent system to extract **keywords** and **semantic relationships** from uploaded research PDFs and generate an interactive **Knowledge Graph**.  
 Built with Streamlit, Neo4j, Ollama (LLaMA 3), and PyVis.
 
-## 📑 Table of Contents
+##  Table of Contents
 
 - [Overview](#-overview)
 - [Features](#-features)
@@ -22,14 +22,14 @@ Built with Streamlit, Neo4j, Ollama (LLaMA 3), and PyVis.
 
 ---
 
-## 🚀 Overview
+##  Overview
 
 This project allows users to upload one or more research papers (PDFs), automatically extract the key concepts, and generate an interactive Knowledge Graph.  
 It uses advanced keyword extraction (TF-IDF, YAKE, KeyBERT) and LLM-based relation extraction (using Ollama models) to build meaningful graphs for scientific documents.
 
 ---
 
-## ✨ Features
+##  Features
 
 - Upload single or multiple PDFs.
 - Intelligent keyword extraction (from *Keywords section* if present, else model-based).
