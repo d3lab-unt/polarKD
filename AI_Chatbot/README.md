@@ -68,7 +68,7 @@ pip install -r requirements.txt
 
 Install [Ollama](https://ollama.com/) and run your desired model:
 ```bash
-ollama run llama2
+ollama run olafgeibig/nous-hermes-2-mistral:7B-DPO-Q5_K_M
 ```
 
 ### 5. Run the Script
