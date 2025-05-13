@@ -4,4 +4,8 @@ langchain-huggingface
 langchain-ollama
 faiss-cpu
 unstructured
-PyPDF2
+langchain-core>=0.1.37
+transformers>=4.36.2
+sentence-transformers>=2.2.2
+torch>=2.0.0
+pypdf>=3.17.4
