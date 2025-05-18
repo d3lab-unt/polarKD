@@ -143,28 +143,37 @@ stopwords_custom = set(stopwords.words('english')) | {"et", "al","also", "study"
 
 
 def extract_keywords(input_text, k):
-  list_keywords = []
-  input_text=input_text.lower()
-    # Extract lines that contain the "keywords" phrase
-  keyword_lines = []
-  for line in input_text.splitlines():
-      if "keyword" in line.lower():
-        keyword_lines.append(line.strip())
+    input_text = input_text.lower()
+    lines = input_text.splitlines()
+    keyword_lines = []
+    collecting = False
 
-  if keyword_lines:
-    print("✅ Detected Keywords Section:")
-    full_kw_line = " ".join(keyword_lines)
+    for i, line in enumerate(lines):
+        if "keywords" in line:  # no longer requiring ':'
+            collecting = True
+            keyword_lines.append(line.strip())
+            # Check up to 2 more lines for continued keywords
+            for j in range(i + 1, min(i + 3, len(lines))):
+                next_line = lines[j].strip()
+                # Stop if line looks like a heading
+                if re.match(r"^\s*\d+[\.\)]?\s+[a-z]", next_line):  # e.g., 1. introduction
+                    break
+                if next_line == "":
+                    continue
+                keyword_lines.append(next_line)
+            break
 
-        # Clean separator variations
-    full_kw_line = re.sub(r"(?i)keywords\s*[:\-]?\s*", "", full_kw_line)
-    full_kw_line = full_kw_line.replace("·", ",").replace("•", ",").replace(";", ",")
-    full_kw_line = re.sub(r"[^\w,\-\s]", "", full_kw_line)
+    list_keywords = []
+    if keyword_lines:
+        print("✅ Detected Multi-line or Single-line Keywords Section:")
+        full_kw_line = " ".join(keyword_lines)
+        full_kw_line = re.sub(r"(?i)keywords\s*[:\-]?\s*", "", full_kw_line)  # remove 'keywords:'
+        full_kw_line = full_kw_line.replace("·", ",").replace("•", ",").replace(";", ",")
+        full_kw_line = re.sub(r"[^\w,\-\s]", "", full_kw_line)
+        list_keywords = [kw.strip() for kw in full_kw_line.split(",") if kw.strip()]
+        print(f"Extracted from Keywords section: {list_keywords}")
+        return list_keywords[:k] if len(list_keywords) > k else list_keywords
 
-    list_keywords = [kw.strip() for kw in full_kw_line.split(",") if kw.strip()]
-    print(f"Extracted from Keywords section: {list_keywords}")
-    return list_keywords
-
-  else:
     # TF-IDF
     input_text=cleaning_extracted_text(input_text)
     list_documents = [input_text]
