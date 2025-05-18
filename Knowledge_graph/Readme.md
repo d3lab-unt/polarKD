@@ -17,6 +17,7 @@ Built with Streamlit, Neo4j, Ollama (LLaMA 3), and PyVis.
 - [How It Works](#-how-it-works)
 - [Example](#-example)
 - [Future Enhancements](#-future-enhancements)
+- [Example flow](#-Example-Flow)
 - [Author](#-author)
 - [Final Notes](#-final-notes)
 
@@ -141,6 +142,26 @@ Users can download the extracted relations as CSV or JSON files.
 - Full-fledged web application with user login support
 
 ---
+## Example Flow
+- Connect to the server (in my case UNT Server) using ssh command.
+![image](https://github.com/user-attachments/assets/d35fc7da-dcf3-4ddd-b204-28b428b54fe4)
+![image](https://github.com/user-attachments/assets/a6365d23-815a-49a3-86d9-30817a73faf9)
+- create venv and install required libraries and go the directory where all .py files are stored.
+- Then run ollama serve to pull llama 3.2 from ollama.
+  ![image](https://github.com/user-attachments/assets/c785e024-c6dc-41ff-9651-20148d669754)
+  ![image](https://github.com/user-attachments/assets/ee44f17d-7834-4a61-be03-6fbb07d297cd)
+- Now open another terminal and go to the same directory where code is present and run frontend.py
+  ![image](https://github.com/user-attachments/assets/48ac18d4-da82-4fab-afcd-eb1f4871ab09)
+- Go to new terminal window and then run the following command to connect server to localhost using ssh tunneling.
+  ![image](https://github.com/user-attachments/assets/31563f82-e794-4126-bbc6-c07670d2101c)
+- Open the localhost link and upload the files.
+  ![image](https://github.com/user-attachments/assets/581e4d2e-fe8f-4737-aeeb-c6f1803b0bbb)
+- The below are the results:
+  ![image](https://github.com/user-attachments/assets/3159baa9-1823-43dc-a115-987e6fb53564)
+  ![image](https://github.com/user-attachments/assets/d24482ac-b8a2-43ca-b6dc-1cc1dc69394f)
+  ![image](https://github.com/user-attachments/assets/59527526-a805-4d13-8fda-2bff2307cc7f)
+  ![image](https://github.com/user-attachments/assets/ea05dcd9-00a3-4ec5-8474-9cfa5aac2960)
+
 
 ##  Author
 
