@@ -1,11 +1,26 @@
+# Core LangChain and components
 langchain>=0.1.14
+langchain-core>=0.1.37
 langchain-community
 langchain-huggingface
 langchain-ollama
+
+# Vector store
 faiss-cpu
-unstructured
-langchain-core>=0.1.37
+
+# Embedding and LLM support
 transformers>=4.36.2
 sentence-transformers>=2.2.2
 torch>=2.0.0
+
+# Document loaders and parsing
 pypdf>=3.17.4
+PyMuPDF  # for 'fitz' module
+unstructured
+
+# Web scraping
+requests
+beautifulsoup4
+
+# Utilities
+tqdm
