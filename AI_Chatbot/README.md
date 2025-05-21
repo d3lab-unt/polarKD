@@ -73,7 +73,7 @@ ollama run olafgeibig/nous-hermes-2-mistral:7B-DPO-Q5_K_M
 
 ### 5. Run the Script
 ```bash
-python qa_main.py
+python qa_main_mistral.py
 ```
 
 ---
@@ -98,7 +98,7 @@ The script retrieves top-k matching document chunks and sends them to the local 
 
 ```
 llm-ollama-qa/
-├── qa_main.py                 # Main script
+├── qa_main_mistral.py                 # Main script
 ├── requirements.txt
 ├── README.md
 └── docs/                      # Folder for documents to load
