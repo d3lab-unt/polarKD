@@ -74,13 +74,24 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 4. Install and Run Ollama
+### 4. Make sure you have neo4j aura instance running
+Give the required neo4j ceredentials:
+U can find these credentials in the python driver of neo4j see the references.
+NEO4j_USER is 'neo4j'
+Make sure you have the password while creating account.
+```bash
+NEO4J_URI='neo4j+s://.......'
+NEO4J_USER='neo4j'
+NEO4J_PASSWORD='.....'
+```
+
+### 5. Install and Run Ollama
 Install Ollama and pull the LLaMA3 model:
 ```bash
 ollama run llama3
 ```
 
-### 5. Run the Streamlit App
+### 6. Run the Streamlit App
 ```bash
 streamlit run frontend.py
 ```
@@ -161,6 +172,11 @@ Users can download the extracted relations as CSV or JSON files.
   ![image](https://github.com/user-attachments/assets/d24482ac-b8a2-43ca-b6dc-1cc1dc69394f)
   ![image](https://github.com/user-attachments/assets/59527526-a805-4d13-8fda-2bff2307cc7f)
   ![image](https://github.com/user-attachments/assets/ea05dcd9-00a3-4ec5-8474-9cfa5aac2960)
+- Neo4j credentials driver info:
+  ![image](https://github.com/user-attachments/assets/528c40ec-cf20-49b4-924e-ae5cfb3003de)
+  ![image](https://github.com/user-attachments/assets/641c7ec7-812c-4ee6-ade9-2532905c4a02)
+
+
 
 
 ##  Author
