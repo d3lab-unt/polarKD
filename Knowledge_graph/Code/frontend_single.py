@@ -20,13 +20,25 @@ if uploaded_file is not None:
     st.success("PDF uploaded successfully!")
 
     # Extract keywords and relations
-    with st.spinner("Extracting keywords and relations..."):
-        nodes, relations = process("temp.pdf", k=k)
+    with st.spinner("Extracting keywords, relations, and dataset information..."):
+        nodes, relations, dataset_info = process("temp.pdf", k=k)
 
     # Show warning if fewer keywords were extracted
     if len(nodes) < k:
         st.warning(f"⚠️ Only {len(nodes)} unique keywords could be extracted, though you requested {k}. "
                    "The text may be too short or keywords overlapped heavily.")
+    
+    # Display dataset information
+    st.subheader("📊 Dataset Information Extracted")
+    with st.container():
+        col1, col2 = st.columns(2)
+        with col1:
+            st.info(f"**📁 Data Source:** {dataset_info.get('source', 'Not specified')}")
+            variables_str = ", ".join(dataset_info.get('variables', [])) if dataset_info.get('variables') else "Not specified"
+            st.info(f"**📈 Variables:** {variables_str}")
+        with col2:
+            st.info(f"**📅 Time Period:** {dataset_info.get('time_period', 'Not specified')}")
+            st.info(f"**🌍 Location:** {dataset_info.get('location', 'Not specified')}")
 
     # Display extracted content
     st.subheader("Extracted Keywords")
@@ -39,7 +51,7 @@ if uploaded_file is not None:
     # Store in Neo4j
     neo = Neo4jConnector()
     with st.spinner("Storing data in Neo4j and visualizing graph..."):
-        neo.store_keywords_and_relations(nodes, relations)
+        neo.store_keywords_and_relations(nodes, relations, dataset_info)
         rels = neo.retrieve_relations()
         graph = neo.generate_graph(rels)
         graph.save_graph("graph.html")

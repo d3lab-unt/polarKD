@@ -409,6 +409,85 @@ def hybrid_score(h, r, t,model):
     return round(0.6 * cos_score + 0.3 * fuzz_score + direction_bonus, 3)
 
 
+def extract_dataset_info(text):
+    """
+    Extract dataset information from research paper text using Ollama.
+    Returns a dictionary with dataset source, variables, time period, and location.
+    """
+    prompt = f"""
+You are an expert at extracting dataset information from scientific research papers.
+
+Analyze the following text and extract information about datasets mentioned:
+
+TEXT:
+{text[:8000]}
+
+Extract the following information:
+1. Data Source/Dataset Name (e.g., "NSIDC Sea Ice Index", "ERA5 Reanalysis", "MODIS")
+2. Variables/Parameters measured (e.g., "temperature", "ice_thickness", "wind_speed")
+3. Time Period covered (e.g., "1979-2023", "January 2020 - December 2021")
+4. Geographic Location (e.g., "Arctic Ocean", "70°N-90°N", "Global")
+
+Return ONLY a JSON object with this exact structure:
+{{
+    "source": "dataset name or 'Not specified'",
+    "variables": ["var1", "var2", "var3"],
+    "time_period": "time range or 'Not specified'",
+    "location": "geographic area or 'Not specified'"
+}}
+
+Important:
+- If multiple datasets are mentioned, focus on the primary one
+- For variables, list only the main measured parameters
+- Keep responses concise and factual
+- If information is not found, use "Not specified"
+"""
+    
+    try:
+        # Call Ollama
+        response = ollama.chat(model="llama3", messages=[{"role": "user", "content": prompt}])
+        content = response['message']['content']
+        
+        # Try to parse JSON from response
+        import json
+        # Find JSON object in response (sometimes LLMs add text around JSON)
+        start_idx = content.find('{')
+        end_idx = content.rfind('}') + 1
+        
+        if start_idx != -1 and end_idx > start_idx:
+            json_str = content[start_idx:end_idx]
+            dataset_info = json.loads(json_str)
+            
+            # Ensure all required fields exist
+            if 'source' not in dataset_info:
+                dataset_info['source'] = 'Not specified'
+            if 'variables' not in dataset_info:
+                dataset_info['variables'] = []
+            if 'time_period' not in dataset_info:
+                dataset_info['time_period'] = 'Not specified'
+            if 'location' not in dataset_info:
+                dataset_info['location'] = 'Not specified'
+                
+            # Ensure variables is a list
+            if not isinstance(dataset_info['variables'], list):
+                dataset_info['variables'] = [dataset_info['variables']]
+                
+            print(f"Dataset extracted: {dataset_info['source']}")
+            return dataset_info
+        else:
+            raise ValueError("No JSON found in response")
+            
+    except Exception as e:
+        print(f"Error extracting dataset info: {e}")
+        # Return default structure if extraction fails
+        return {
+            "source": "Not specified",
+            "variables": [],
+            "time_period": "Not specified", 
+            "location": "Not specified"
+        }
+
+
 
 def process(file_path, k):
     model = SentenceTransformer("all-MiniLM-L6-v2")
@@ -419,6 +498,10 @@ def process(file_path, k):
     # Step 0: Extract keywords
     keywords = extract_keywords(input_text, k)
     print(f"\nExtracted Keywords are: {keywords}")
+    
+    # Extract dataset information
+    dataset_info = extract_dataset_info(input_text)
+    print(f"\nExtracted Dataset Info: {dataset_info}")
 
     # Normalize for consistency
     filtered_candidates = [kw.lower().strip() for kw in keywords]
@@ -475,4 +558,4 @@ def process(file_path, k):
             "score": score
         })
 
-    return list(neo4j_nodes), neo4j_edges
+    return list(neo4j_nodes), neo4j_edges, dataset_info
