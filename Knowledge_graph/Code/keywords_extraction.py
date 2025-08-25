@@ -147,32 +147,103 @@ def extract_keywords(input_text, k):
     lines = input_text.splitlines()
     keyword_lines = []
     collecting = False
+    keyword_found = False
 
     for i, line in enumerate(lines):
-        if "keywords" in line:  # no longer requiring ':'
+        # Look for the keyword section start
+        if "keywords" in line or "eywords:" in line:  # Also catches "Keywords:" that might be cut off
+            keyword_found = True
             collecting = True
+            # Add the current line (might have keywords on same line as "Keywords:")
             keyword_lines.append(line.strip())
-            # Check up to 2 more lines for continued keywords
-            for j in range(i + 1, min(i + 3, len(lines))):
+            
+            # Continue collecting lines until we hit a section delimiter
+            for j in range(i + 1, len(lines)):
                 next_line = lines[j].strip()
-                # Stop if line looks like a heading
-                if re.match(r"^\s*\d+[\.\)]?\s+[a-z]", next_line):  # e.g., 1. introduction
+                
+                # Stop conditions - detect new sections or structural elements
+                stop_patterns = [
+                    r"^\s*\d+[\.\)]\s+\w+",  # e.g., "1. Introduction", "1) Methods"
+                    r"^introduction\s*$",  # Section heading
+                    r"^abstract\s*$",
+                    r"^methods?\s*$",
+                    r"^results?\s*$",
+                    r"^discussion\s*$",
+                    r"^conclusion\s*$",
+                    r"^references?\s*$",
+                    r"^acknowledgment",
+                    r"^[-_]{3,}",  # Horizontal line separator
+                    r"^\s*$"  # Empty line after collecting some keywords
+                ]
+                
+                # Check if we should stop
+                should_stop = False
+                for pattern in stop_patterns:
+                    if re.match(pattern, next_line, re.IGNORECASE):
+                        # Only stop on empty line if we've already collected keywords
+                        if pattern == r"^\s*$" and len(keyword_lines) <= 1:
+                            continue
+                        should_stop = True
+                        break
+                
+                if should_stop:
                     break
-                if next_line == "":
-                    continue
-                keyword_lines.append(next_line)
+                
+                # Add line if it contains keyword-like content
+                if next_line and not next_line.startswith("keywords"):
+                    keyword_lines.append(next_line)
+                    
+                # Limit to reasonable number of lines (e.g., 10)
+                if j - i > 10:
+                    break
             break
 
     list_keywords = []
     if keyword_lines:
-        print("✅ Detected Multi-line or Single-line Keywords Section:")
-        full_kw_line = " ".join(keyword_lines)
-        full_kw_line = re.sub(r"(?i)keywords\s*[:\-]?\s*", "", full_kw_line)  # remove 'keywords:'
-        full_kw_line = full_kw_line.replace("·", ",").replace("•", ",").replace(";", ",")
-        full_kw_line = re.sub(r"[^\w,\-\s]", "", full_kw_line)
-        list_keywords = [kw.strip() for kw in full_kw_line.split(",") if kw.strip()]
-        print(f"Extracted from Keywords section: {list_keywords}")
-        return list_keywords[:k] if len(list_keywords) > k else list_keywords
+        print("✅ Detected Keywords Section:")
+        print(f"Raw lines collected: {keyword_lines}")
+        
+        # Join all lines and process
+        full_kw_text = " ".join(keyword_lines)
+        
+        # Remove the word "keywords" and its variations
+        full_kw_text = re.sub(r"(?i)k?eywords?\s*[:\-–—]?\s*", "", full_kw_text)
+        
+        # Handle various separators
+        # Replace semicolons, bullets, and other separators with commas
+        full_kw_text = full_kw_text.replace(";", ",")
+        full_kw_text = full_kw_text.replace("·", ",")
+        full_kw_text = full_kw_text.replace("•", ",")
+        full_kw_text = full_kw_text.replace("|", ",")
+        full_kw_text = full_kw_text.replace("–", ",")
+        full_kw_text = full_kw_text.replace("—", ",")
+        
+        # Remove unwanted characters but keep commas, spaces, letters, numbers, hyphens
+        full_kw_text = re.sub(r"[^\w,\-\s]", " ", full_kw_text)
+        
+        # Split by comma and clean each keyword
+        potential_keywords = full_kw_text.split(",")
+        
+        for kw in potential_keywords:
+            # Clean whitespace and filter
+            kw = kw.strip()
+            # Remove standalone numbers or single letters
+            if kw and len(kw) > 1 and not kw.isdigit():
+                list_keywords.append(kw)
+        
+        # Remove duplicates while preserving order
+        seen = set()
+        unique_keywords = []
+        for kw in list_keywords:
+            if kw.lower() not in seen:
+                seen.add(kw.lower())
+                unique_keywords.append(kw)
+        
+        list_keywords = unique_keywords
+        print(f"Extracted keywords: {list_keywords}")
+        
+        if list_keywords:
+            return list_keywords[:k] if len(list_keywords) > k else list_keywords
 
     # TF-IDF
     input_text=cleaning_extracted_text(input_text)
@@ -414,13 +485,30 @@ def extract_dataset_info(text):
     Extract dataset information from research paper text using Ollama.
     Returns a dictionary with dataset source, variables, time period, and location.
     """
+    # Take more text for better dataset detection
+    text_sample = text[:12000] if len(text) > 12000 else text
+    
     prompt = f"""
 You are an expert at extracting dataset information from scientific research papers.
 
 Analyze the following text and extract information about datasets mentioned:
 
 TEXT:
-{text[:8000]}
+{text_sample}
+
+Look for mentions of:
+- Data sources (databases, repositories, satellite data, observational data)
+- Dataset names (often in Methods, Data sections, or figure captions)
+- Time periods (years, date ranges)
+- Geographic regions
+- Variables or parameters measured
+
+Common dataset indicators:
+- "data from", "dataset", "obtained from", "downloaded from"
+- "observations", "measurements", "records"
+- Institution names (NSIDC, NOAA, NASA, ERA, MODIS, etc.)
+- Time ranges with years
+- Geographic coordinates or region names
 
 Extract the following information:
 1. Data Source/Dataset Name (e.g., "NSIDC Sea Ice Index", "ERA5 Reanalysis", "MODIS")

@@ -4,10 +4,10 @@ import re
 import pandas as pd
 import json
 
-# Neo4j credentials
-NEO4J_URI='neo4j+s://abb45abd.databases.neo4j.io'
+# Neo4j credentials - Updated to new instance
+NEO4J_URI='neo4j+s://0d4ad98d.databases.neo4j.io'
 NEO4J_USER='neo4j'
-NEO4J_PASSWORD='L79SPg4lF0BFy37Nf4VWjeEocRVyjAW_UHtpnzu5ZG4'
+NEO4J_PASSWORD='l2eTsa3JmSPkwWoCCNszhUyvkxkapl3WwN2oHzJZJ6E'
 
 def clean_text(text):
     c = re.sub(r"^\d+\.\s*", "", text.strip())
