@@ -225,11 +225,20 @@ Users can download the extracted relations as CSV or JSON files.
   ![image](https://github.com/user-attachments/assets/31563f82-e794-4126-bbc6-c07670d2101c)
 - Open the localhost link and upload the files.
 <img width="1470" height="831" alt="Screenshot 2025-08-25 at 10 12 57 PM" src="https://github.com/user-attachments/assets/6d273d21-c76d-42a4-87a0-b71604094e5d" />
+- You can select any of the following options:
+    - Send to Q&A
+    - Generate Knowledge Graph.
+ <img width="1470" height="773" alt="Screenshot 2025-08-25 at 10 16 23 PM" src="https://github.com/user-attachments/assets/9c0aa04d-1fed-4305-806d-62c7c1272df3" />
+ - Querying Q&A looks like this:
+<img width="1470" height="832" alt="Screenshot 2025-08-25 at 10 13 40 PM" src="https://github.com/user-attachments/assets/8e6e5b9d-20ce-4fb8-b2d8-c2ba149f1862" />
 
 - The below are the results:
-  ![image](https://github.com/user-attachments/assets/3159baa9-1823-43dc-a115-987e6fb53564)
-  ![image](https://github.com/user-attachments/assets/d24482ac-b8a2-43ca-b6dc-1cc1dc69394f)
-  ![image](https://github.com/user-attachments/assets/59527526-a805-4d13-8fda-2bff2307cc7f)
+<img width="1470" height="771" alt="Screenshot 2025-08-25 at 10 15 16 PM" src="https://github.com/user-attachments/assets/92008b26-bd69-4e01-8792-08ac7ab330e9" />
+
+<img width="1470" height="776" alt="Screenshot 2025-08-25 at 10 15 48 PM" src="https://github.com/user-attachments/assets/2439ea19-b587-459a-80f0-dc4b4f2dcc1c" />
+
+<img width="1470" height="831" alt="Screenshot 2025-08-25 at 10 16 03 PM" src="https://github.com/user-attachments/assets/8ef7bd25-ea12-4ec7-b7d9-7a19097315b2" />
+
   ![image](https://github.com/user-attachments/assets/ea05dcd9-00a3-4ec5-8474-9cfa5aac2960)
 - Neo4j credentials driver info:
   ![image](https://github.com/user-attachments/assets/528c40ec-cf20-49b4-924e-ae5cfb3003de)
