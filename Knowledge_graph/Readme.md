@@ -224,7 +224,8 @@ Users can download the extracted relations as CSV or JSON files.
 - Go to new terminal window and then run the following command to connect server to localhost using ssh tunneling.
   ![image](https://github.com/user-attachments/assets/31563f82-e794-4126-bbc6-c07670d2101c)
 - Open the localhost link and upload the files.
-  ![image](https://github.com/user-attachments/assets/581e4d2e-fe8f-4737-aeeb-c6f1803b0bbb)
+<img width="1470" height="831" alt="Screenshot 2025-08-25 at 10 12 57 PM" src="https://github.com/user-attachments/assets/6d273d21-c76d-42a4-87a0-b71604094e5d" />
+
 - The below are the results:
   ![image](https://github.com/user-attachments/assets/3159baa9-1823-43dc-a115-987e6fb53564)
   ![image](https://github.com/user-attachments/assets/d24482ac-b8a2-43ca-b6dc-1cc1dc69394f)
