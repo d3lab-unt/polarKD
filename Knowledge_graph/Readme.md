@@ -239,6 +239,9 @@ Users can download the extracted relations as CSV or JSON files.
 
 <img width="1470" height="831" alt="Screenshot 2025-08-25 at 10 16 03 PM" src="https://github.com/user-attachments/assets/8ef7bd25-ea12-4ec7-b7d9-7a19097315b2" />
 
+<img width="2940" height="1912" alt="image" src="https://github.com/user-attachments/assets/98bfe6b0-0e85-43f4-857d-9565b0f646dc" />
+
+
   ![image](https://github.com/user-attachments/assets/ea05dcd9-00a3-4ec5-8474-9cfa5aac2960)
 - Neo4j credentials driver info:
   ![image](https://github.com/user-attachments/assets/528c40ec-cf20-49b4-924e-ae5cfb3003de)
