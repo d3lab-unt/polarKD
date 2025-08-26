@@ -35,6 +35,9 @@ It uses advanced keyword extraction (TF-IDF, YAKE, KeyBERT) and LLM-based relati
 - Upload single or multiple PDFs.
 - Intelligent keyword extraction (from *Keywords section* if present, else model-based).
 - Relation extraction between keywords using LLM (LLaMA3).
+- **Q&A System with RAG**: Ask questions about uploaded documents using Retrieval-Augmented Generation.
+- **Dataset Information Extraction**: Automatically identifies and extracts dataset sources, variables, time periods, and locations from research papers.
+- **Enhanced Graph Visualization**: Color-coded nodes distinguish between datasets, variables, and regular keywords.
 - Visualize the generated Knowledge Graph interactively.
 - Download the extracted relations as CSV or JSON.
 - 100% Local Processing (Privacy-Preserving).
@@ -48,10 +51,10 @@ It uses advanced keyword extraction (TF-IDF, YAKE, KeyBERT) and LLM-based relati
 - **pdfplumber** (PDF Text Extraction)
 - **NLTK**, **spaCy** (Text Cleaning)
 - **TF-IDF**, **YAKE**, **KeyBERT** (Keyword Extraction)
-- **Ollama** (LLaMA 3 model for Relation Extraction)
-- **Neo4j** (Graph Storage)
+- **Ollama** (LLaMA 3 model for Relation Extraction and Q&A)
+- **Neo4j** (Graph Storage with Enhanced Dataset Support)
 - **PyVis** (Graph Visualization)
-- **SentenceTransformers** (Semantic Scoring)
+- **SentenceTransformers** (Semantic Scoring and Document Embeddings for RAG)
 
 ---
 
@@ -101,12 +104,13 @@ streamlit run frontend.py
 ## Project Folder Structure
 ```bash
 pdf-knowledge-graph/
-├── frontend.py              # Streamlit frontend app
-├── keywords_extraction.py   # Extract keywords and relations
-├── neo4j_storage.py         # Neo4j database interaction
-├── storing.py               # Optional CLI mode to process PDFs
-├── requirements.txt         # Python dependencies
-└── README.md                # Project documentation
+├── frontend_light.py        # Streamlit frontend app with Q&A integration
+├── keywords_extraction.py   # Extract keywords, relations, and dataset info
+├── neo4j_storage.py         # Enhanced Neo4j with dataset nodes and relationships
+├── qa_module.py            # RAG-based Q&A system for document queries
+├── storing.py              # Optional CLI mode to process PDFs
+├── requirements.txt        # Python dependencies
+└── README.md               # Project documentation
 ```
 
 ---
@@ -116,24 +120,44 @@ pdf-knowledge-graph/
 ### 1. PDF Upload
 Upload one or more PDF documents via Streamlit.
 
-###  Text Extraction
+### 2. Text Extraction
 Extracts text using `pdfplumber` from uploaded PDFs.
 
-### Keyword Extraction
-- If a "Keywords" section exists, directly extract those keywords.
-- Otherwise, fallback to automatic extraction using TF-IDF, YAKE, and KeyBERT.
-- For multiple PDFs, automatically extract roughly `k/n` keywords per PDF (where n = number of PDFs).
+### 3. Processing Options
 
-###  Relation Extraction
-Keyword pairs are passed to a LLaMA3 model running locally via Ollama to infer semantic relations.
+#### Option A: Knowledge Graph Generation
+- **Keyword Extraction**: 
+  - If a "Keywords" section exists, directly extract those keywords
+  - Otherwise, fallback to automatic extraction using TF-IDF, YAKE, and KeyBERT
+  - For multiple PDFs, automatically extract roughly `k/n` keywords per PDF (where n = number of PDFs)
+- **Dataset Information Extraction**:
+  - Automatically identifies dataset sources, variables, time periods, and locations using LLaMA3
+  - Creates specialized Dataset nodes with properties (name, time_period, location)
+  - Marks dataset variables as dual-labeled nodes (:Keyword:Variable)
+  - Establishes relationships: HAS_VARIABLE (dataset→variable) and EXTRACTED_FROM (dataset→keyword)
+- **Relation Extraction**: Keyword pairs are passed to LLaMA3 to infer semantic relations
+- **Enhanced Graph Construction**: 
+  - Creates color-coded nodes: Orange for datasets, Green for variables, Blue for keywords
+  - Stores nodes and relationships in Neo4j with dataset context
 
-### Knowledge Graph Construction
-Nodes (keywords) and edges (relations) are inserted into a Neo4j database.
+#### Option B: Q&A System
+- **Document Processing**:
+  - Splits text into overlapping 800-word chunks for better context retrieval
+  - Generates vector embeddings using SentenceTransformer (all-MiniLM-L6-v2)
+- **RAG Implementation**:
+  - Stores document chunks with their embeddings
+  - Uses cosine similarity for semantic search (threshold: 0.15)
+  - Retrieves top-k relevant chunks for query answering
+- **Answer Generation**:
+  - Combines relevant chunks as context
+  - Uses LLaMA3 to generate contextual answers
+  - Includes source citations from retrieved documents
 
-### Visualization
-A PyVis network graph is generated and displayed inside the Streamlit app.
+### 4. Visualization & Interaction
+- **Knowledge Graph**: Interactive PyVis network with color-coded nodes and relationships
+- **Q&A Interface**: Chat-based interface with conversation history and context-aware responses
 
-### Export Options
+### 5. Export Options
 Users can download the extracted relations as CSV or JSON files.
 
 ---
@@ -144,12 +168,46 @@ Users can download the extracted relations as CSV or JSON files.
 
 ---
 
+## Key Components Explained
+
+### qa_module.py - Q&A System
+- **QASystem Class**: Implements RAG-based document Q&A
+  - `add_document()`: Processes and stores PDF documents with embeddings
+  - `find_relevant_chunks()`: Semantic search using cosine similarity
+  - `generate_answer()`: Context-aware answer generation with LLaMA3
+  - `answer_question()`: Main interface for Q&A processing
+
+### keywords_extraction.py - Enhanced Extraction
+- **extract_dataset_info()**: New function at line 410 that extracts:
+  - Dataset sources and names from research papers
+  - Measured variables and parameters
+  - Time periods and geographic locations
+  - Returns structured JSON with dataset metadata
+- **process()**: Updated to return dataset information alongside keywords and relations
+
+### neo4j_storage.py - Graph Storage Enhancements  
+- **Dataset Node Creation**: Lines 26-43 handle dataset nodes with properties
+- **Variable Marking**: Lines 69-70 mark keywords as variables when applicable
+- **New Relationships**:
+  - `HAS_VARIABLE`: Links datasets to their measured variables (lines 72-79)
+  - `EXTRACTED_FROM`: Links datasets to extracted keywords (lines 81-89)
+- **Enhanced Visualization**: Lines 127-140 implement color-coded node rendering
+
+### frontend_light.py - Integrated Interface
+- **Dual Processing Modes** (lines 428-526):
+  - "Send to Q&A": Loads documents into RAG system only
+  - "Generate Knowledge Graph": Creates visualization with dataset extraction
+- **Q&A Chat Interface** (lines 528-612): Full conversational UI with history
+- **Session Management**: Tracks processed PDFs and Q&A documents separately
+
 ## Future Enhancements
 
 - OCR support for scanned PDFs (using Tesseract)
 - Interactive graph editing (merging/splitting nodes)
 - Fine-tune LLaMA3 model for specific domains
 - Automatic summarization of graphs
+- Cross-document relationship discovery in Q&A
+- Export Q&A conversations and insights
 - Full-fledged web application with user login support
 
 ---
