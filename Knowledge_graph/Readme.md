@@ -213,8 +213,6 @@ Users can download the extracted relations as CSV or JSON files.
 ---
 ## Example Flow
 - Connect to the server (in my case UNT Server) using ssh command.
-![image](https://github.com/user-attachments/assets/d35fc7da-dcf3-4ddd-b204-28b428b54fe4)
-![image](https://github.com/user-attachments/assets/a6365d23-815a-49a3-86d9-30817a73faf9)
 - create venv and install required libraries and go the directory where all .py files are stored.
 - Then run ollama serve to pull llama 3.2 from ollama.
   ![image](https://github.com/user-attachments/assets/c785e024-c6dc-41ff-9651-20148d669754)
