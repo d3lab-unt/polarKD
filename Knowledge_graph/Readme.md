@@ -215,12 +215,8 @@ Users can download the extracted relations as CSV or JSON files.
 - Connect to the server (in my case UNT Server) using ssh command.
 - create venv and install required libraries and go the directory where all .py files are stored.
 - Then run ollama serve to pull llama 3.2 from ollama.
-  ![image](https://github.com/user-attachments/assets/c785e024-c6dc-41ff-9651-20148d669754)
-  ![image](https://github.com/user-attachments/assets/ee44f17d-7834-4a61-be03-6fbb07d297cd)
 - Now open another terminal and go to the same directory where code is present and run frontend.py
-  ![image](https://github.com/user-attachments/assets/48ac18d4-da82-4fab-afcd-eb1f4871ab09)
 - Go to new terminal window and then run the following command to connect server to localhost using ssh tunneling.
-  ![image](https://github.com/user-attachments/assets/31563f82-e794-4126-bbc6-c07670d2101c)
 - Open the localhost link and upload the files.
 <img width="1470" height="831" alt="Screenshot 2025-08-25 at 10 12 57 PM" src="https://github.com/user-attachments/assets/6d273d21-c76d-42a4-87a0-b71604094e5d" />
 - You can select any of the following options:
