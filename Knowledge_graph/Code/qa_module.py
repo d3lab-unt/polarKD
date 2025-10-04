@@ -26,8 +26,17 @@ except ImportError:
     print("⚠️ FAISS not available - using fallback similarity search")
 
 class QASystem:
-    def __init__(self, model_name="llama3", use_faiss=True, target_chunk_tokens=512, use_hybrid=True):
-        """Initialize the Q&A system with embedding model and LLM"""
+    def __init__(self, model_name="llama3", use_faiss=True, target_chunk_tokens=512, use_hybrid=True, retrieval_mode='hybrid'):
+        """
+        Initialize the Q&A system with embedding model and LLM
+
+        Args:
+            model_name: LLM model name
+            use_faiss: Whether to use FAISS index (deprecated, use retrieval_mode instead)
+            target_chunk_tokens: Target tokens per chunk
+            use_hybrid: Whether to use hybrid search (deprecated, use retrieval_mode instead)
+            retrieval_mode: 'faiss' (dense only), 'bm25' (sparse only), or 'hybrid' (both)
+        """
         self.embedding_model = SentenceTransformer("all-MiniLM-L6-v2")
         self.llm_model = model_name
         self.documents = {}  # Store documents by filename
@@ -45,23 +54,37 @@ class QASystem:
         self.min_chunk_tokens = 128  # Avoid tiny chunks
         self.max_chunk_tokens = 768  # Model limit consideration
 
-        # FAISS setup
-        self.use_faiss = use_faiss
+        # Set retrieval mode (new unified approach)
+        # Only use backward compatibility if retrieval_mode is default 'hybrid'
+        if retrieval_mode == 'hybrid':
+            # Backward compatibility with old parameters
+            if not use_faiss and use_hybrid:
+                self.retrieval_mode = 'bm25'
+            elif use_faiss and not use_hybrid:
+                self.retrieval_mode = 'faiss'
+            else:
+                self.retrieval_mode = 'hybrid'
+        else:
+            # Explicit retrieval_mode takes precedence
+            self.retrieval_mode = retrieval_mode.lower()
+
+        # FAISS setup (for dense retrieval)
+        self.use_faiss = self.retrieval_mode in ['faiss', 'hybrid']
         self.embedding_dim = 384  # all-MiniLM-L6-v2 produces 384-dim embeddings
         self.faiss_index = None
         self.chunk_metadata = []  # Store metadata for each chunk in FAISS
 
-        # BM25 setup for hybrid search
-        self.use_hybrid = use_hybrid
+        # BM25 setup (for sparse retrieval)
+        self.use_hybrid = self.retrieval_mode in ['bm25', 'hybrid']
         self.bm25_index = None
         self.tokenized_corpus = []  # Tokenized chunks for BM25
         self.bm25_doc_mapping = []  # Maps BM25 index to chunk metadata
-        
+
         if self.use_faiss:
             # Initialize FAISS index with cosine similarity
             # Using IndexFlatIP for inner product (we'll normalize vectors for cosine similarity)
             self.faiss_index = faiss.IndexFlatIP(self.embedding_dim)
-            print("✅ FAISS index initialized")
+            print(f"✅ FAISS index initialized (mode: {self.retrieval_mode})")
         
     def extract_text_from_pdf(self, pdf_path: str) -> str:
         """Extract text from PDF file using PyMuPDF"""
@@ -306,15 +329,21 @@ class QASystem:
         
         # Generate embeddings for chunks
         if chunks_to_embed:
-            embeddings = self.embedding_model.encode(chunks_to_embed)
-            
+            # Build BM25 index if needed (for BM25-only or Hybrid modes)
+            if self.use_hybrid:
+                self._update_bm25_index(chunks_to_embed, filename)
+
+            # Generate embeddings if FAISS is used
+            if self.use_faiss or not self.use_hybrid:
+                embeddings = self.embedding_model.encode(chunks_to_embed)
+
             if self.use_faiss:
                 # Normalize embeddings for cosine similarity
                 embeddings_normalized = embeddings / np.linalg.norm(embeddings, axis=1, keepdims=True)
-                
+
                 # Add to FAISS index
                 self.faiss_index.add(embeddings_normalized.astype('float32'))
-                
+
                 # Store metadata for each chunk
                 for i, chunk in enumerate(chunks_to_embed):
                     self.chunk_metadata.append({
@@ -323,15 +352,11 @@ class QASystem:
                         'content': chunk
                     })
                 print(f"Added {filename} with {len(chunks_to_embed)} chunks to FAISS index")
-
-                # Build BM25 index if hybrid search is enabled
-                if self.use_hybrid:
-                    self._update_bm25_index(chunks_to_embed, filename)
-            else:
+            elif not self.use_faiss and not self.use_hybrid:
                 # Original implementation for backward compatibility
                 self.embeddings[filename] = embeddings
                 print(f"Added {filename} with {len(chunks_to_embed)} chunks")
-            
+
             return True
         return False
 
@@ -416,11 +441,49 @@ class QASystem:
             print(f"  - Hybrid search: DISABLED (using FAISS only)")
         print(f"{'='*80}\n")
 
-        if self.use_faiss and self.faiss_index and self.faiss_index.ntotal > 0:
-            # Use FAISS for search
+        # Handle different retrieval modes
+        if self.retrieval_mode == 'bm25':
+            # BM25-only retrieval
+            if not self.bm25_index or len(self.tokenized_corpus) == 0:
+                print("⚠️ BM25 index not available")
+                return []
+
+            print(f"[BM25-ONLY SEARCH] Retrieving top {top_k} chunks")
+            query_tokens = self.academic_tokenizer(query)
+            bm25_scores = self.bm25_index.get_scores(query_tokens)
+
+            # Get top BM25 results
+            bm25_top_indices = np.argsort(bm25_scores)[-top_k:][::-1]
+
+            all_relevant = []
+            for idx in bm25_top_indices:
+                if idx < len(self.bm25_doc_mapping) and bm25_scores[idx] > 0.01:
+                    metadata = self.bm25_doc_mapping[idx]
+                    all_relevant.append({
+                        'filename': metadata['filename'],
+                        'chunk': metadata['content'],
+                        'score': float(bm25_scores[idx]),
+                        'retrieval_method': 'BM25'
+                    })
+
+            print(f"  Retrieved {len(all_relevant)} chunks via BM25")
+
+            # Log and return BM25 results
+            if verbose:
+                print(f"\n[RETRIEVED CHUNKS] Found {len(all_relevant)} relevant chunks")
+                for i, chunk in enumerate(all_relevant, 1):
+                    print(f"\n{i}. {chunk['filename']} (Score: {chunk['score']:.3f})")
+                    print(f"   {chunk['chunk'][:100]}...")
+            else:
+                print(f"\n[RETRIEVED CHUNKS] Found {len(all_relevant)} relevant chunks")
+
+            return all_relevant
+
+        elif self.use_faiss and self.faiss_index and self.faiss_index.ntotal > 0:
+            # FAISS or Hybrid search
             query_embedding = self.embedding_model.encode([query])
             query_embedding_normalized = query_embedding / np.linalg.norm(query_embedding)
-            
+
             # Search in FAISS index - get more candidates initially
             search_k = min(top_k * 3, self.faiss_index.ntotal)  # Get 3x candidates for better threshold calculation
             scores, indices = self.faiss_index.search(query_embedding_normalized.astype('float32'), search_k)
@@ -445,7 +508,7 @@ class QASystem:
                 all_relevant = self.apply_threshold_with_minimum(chunks_with_scores, threshold, min_chunks=3)
 
                 # If hybrid search is enabled, combine with BM25 results
-                if self.use_hybrid and self.bm25_index is not None:
+                if self.retrieval_mode == 'hybrid' and self.bm25_index is not None:
                     all_relevant = self._hybrid_search(query, all_relevant, top_k, hybrid_alpha)
                 else:
                     # Limit to top_k for FAISS-only
