@@ -161,6 +161,30 @@ st.markdown("""
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
     
+    /* Climate variable tags (for filtered keywords) */
+    .variable-tag {
+        display: inline-block;
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        padding: 0.3rem 0.8rem;
+        border-radius: 15px;
+        margin: 0.2rem;
+        font-size: 0.85rem;
+        font-weight: 500;
+    }
+    
+    /* Filtered out tags */
+    .filtered-tag {
+        display: inline-block;
+        background: #e9ecef;
+        color: #6c757d;
+        padding: 0.3rem 0.8rem;
+        border-radius: 15px;
+        margin: 0.2rem;
+        font-size: 0.85rem;
+        text-decoration: line-through;
+    }
+    
     /* Database items */
     .database-item {
         background: #f8f9fa;
@@ -425,6 +449,13 @@ with col2:
     # Number of keywords for knowledge graph
     k = st.slider("Keywords to Extract (for Knowledge Graph)", min_value=5, max_value=50, value=15, step=5)
     
+    # Toggle for variable filtering
+    filter_variables = st.checkbox(
+        "🔬 Filter to Variables Only", 
+        value=True,
+        help="Extract only measurable variables (temperature, pressure, salinity, etc.) and their relationships. Removes organizations, locations, and methods."
+    )
+    
     if st.button("📚 Send to Q&A", use_container_width=True, key="send_qa", help="Load documents for question-answering"):
         if uploaded_files and len(uploaded_files) > 0:
             with st.spinner("Adding documents to Q&A system..."):
@@ -474,15 +505,64 @@ with col2:
                     with open(temp_filename, "wb") as f:
                         f.write(file_content)
                     
-                    # Process each file
-                    nodes, relations, dataset_info = process(temp_filename, k=k)
+                    # Process each file with optional variable filtering
+                    nodes, relations, dataset_info, keywords_metadata = process(temp_filename, k=k, filter_variables=filter_variables)
+                    
+                    # Display Keywords section detection info if available
+                    if keywords_metadata and keywords_metadata.get('from_keywords_section'):
+                        st.success(f"📚 **Keywords section found in {file.name}!** Extracted {keywords_metadata['total_found']} keywords directly from the paper's Keywords section.")
+                    elif keywords_metadata:
+                        st.info(f"ℹ️ No Keywords section found in {file.name}. Using {keywords_metadata.get('method', 'algorithmic extraction')} to extract keywords.")
+                    
+                    # Display Variable Filtering Results if applied
+                    if keywords_metadata and keywords_metadata.get('filtering_applied'):
+                        original_kw = keywords_metadata.get('original_keywords', [])
+                        filtered_kw = keywords_metadata.get('filtered_keywords', [])
+                        removed_kw = keywords_metadata.get('removed_keywords', [])
+                        
+                        # Create metrics display
+                        col1, col2, col3 = st.columns(3)
+                        with col1:
+                            st.metric("Original Keywords", len(original_kw))
+                        with col2:
+                            st.metric("Climate Variables Kept", len(filtered_kw), 
+                                     delta=f"{len(filtered_kw)/len(original_kw)*100:.1f}%" if original_kw else "0%")
+                        with col3:
+                            st.metric("Non-Variables Removed", len(removed_kw),
+                                     delta=f"-{len(removed_kw)/len(original_kw)*100:.1f}%" if original_kw else "0%")
+                        
+                        # Expandable section to show actual keywords
+                        with st.expander(f"🔬 View Variable Filtering Details for {file.name}"):
+                            col_kept, col_removed = st.columns(2)
+                            
+                            with col_kept:
+                                st.markdown("**✅ Climate Variables Kept:**")
+                                if filtered_kw:
+                                    # Display as tags
+                                    kept_display = ", ".join(filtered_kw[:20])
+                                    if len(filtered_kw) > 20:
+                                        kept_display += f" ... and {len(filtered_kw)-20} more"
+                                    st.write(kept_display)
+                                else:
+                                    st.write("No variables identified")
+                            
+                            with col_removed:
+                                st.markdown("**❌ Non-Variables Removed:**")
+                                if removed_kw:
+                                    removed_display = ", ".join(removed_kw[:10])
+                                    if len(removed_kw) > 10:
+                                        removed_display += f" ... and {len(removed_kw)-10} more"
+                                    st.write(removed_display)
+                                else:
+                                    st.write("No keywords filtered out")
                     
                     # Store in session state
                     if file.name not in st.session_state.processed_pdfs:
                         st.session_state.processed_pdfs[file.name] = {
                             'nodes': nodes,
                             'relations': relations,
-                            'dataset_info': dataset_info
+                            'dataset_info': dataset_info,
+                            'keywords_metadata': keywords_metadata
                         }
                     else:
                         # Merge with existing data
@@ -508,13 +588,45 @@ with col2:
             st.success(f"✅ Knowledge graphs generated for {total_files} file(s)!")
             st.info("💡 Tip: Use 'Send to Q&A' button if you want to ask questions about these documents")
             
+            # Display overall filtering summary if filtering was applied
+            if filter_variables:
+                st.markdown("### 📊 Variable Filtering Summary")
+                
+                # Calculate overall statistics
+                total_original = 0
+                total_kept = 0
+                total_removed = 0
+                
+                for pdf_name, pdf_data in st.session_state.processed_pdfs.items():
+                    if pdf_data.get('keywords_metadata', {}).get('filtering_applied'):
+                        metadata = pdf_data['keywords_metadata']
+                        total_original += len(metadata.get('original_keywords', []))
+                        total_kept += len(metadata.get('filtered_keywords', []))
+                        total_removed += len(metadata.get('removed_keywords', []))
+                
+                if total_original > 0:
+                    col1, col2, col3, col4 = st.columns(4)
+                    with col1:
+                        st.metric("Total Keywords", total_original)
+                    with col2:
+                        st.metric("Climate Variables", total_kept, 
+                                 delta=f"{total_kept/total_original*100:.1f}%")
+                    with col3:
+                        st.metric("Filtered Out", total_removed,
+                                 delta=f"-{total_removed/total_original*100:.1f}%")
+                    with col4:
+                        retention_rate = total_kept/total_original*100 if total_original > 0 else 0
+                        st.metric("Retention Rate", f"{retention_rate:.1f}%")
+            
             # Display combined keywords
             if all_keywords:
-                st.markdown("**🔑 Extracted Keywords (from all files):**")
+                st.markdown("**🔑 Extracted Climate Variables (from all files):**")
                 unique_keywords = list(set(all_keywords))
                 keyword_html = ""
-                for keyword in unique_keywords[:20]:  # Show top 20
+                for keyword in unique_keywords[:30]:  # Show top 30
                     keyword_html += f'<span class="keyword-tag">{keyword}</span>'
+                if len(unique_keywords) > 30:
+                    keyword_html += f'<span class="keyword-tag">... and {len(unique_keywords)-30} more</span>'
                 st.markdown(keyword_html, unsafe_allow_html=True)
             
             # Display datasets found

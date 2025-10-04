@@ -113,30 +113,51 @@ def scale(s, method="default"):
     return softmax.tolist()
 ## Need to work on multiple keywords in multiple pdfs
 
-stopwords_custom = set(stopwords.words('english')) | {"et", "al","also", "study","paper", "research", "abstract", "methodology","table",
-                                                      "abstract", "introduction", "conclusion", "discussion", "results",
-    "acknowledgments", "references", "et", "al", "doi", "journal",
-
-    # Common measurement and mathematical terms
-    "fig", "figure", "table", "equation", "calculated", "estimated", "observed",
-    "km", "m", "cm", "hz", "measurement", "data", "analysis", "model", "method",
-    "parameter", "frequency", "value", "observation", "estimate",
-
-    # Common descriptive terms
-    "high", "low", "increase", "decrease", "significant", "approximately",
+stopwords_custom = set(stopwords.words('english')) | {
+    # Academic/paper structure terms
+    "et", "al", "also", "study", "paper", "research", "abstract", "methodology",
+    "abstract", "introduction", "conclusion", "discussion", "results",
+    "acknowledgments", "references", "doi", "journal", "publication",
+    
+    # Figures and tables (but not "table" alone as it might be part of "water table")
+    "fig", "figure", "equation", 
+    
+    # Generic measurement descriptors (but keep specific units)
+    "calculated", "estimated", "observed", "measured", "shown", "found", "used",
+    "measurement", "observation", "estimate", "value",
+    
+    # Common descriptive terms (but keep when part of compound terms)
+    "high", "low", "significant", "approximately",
     "large", "small", "compared", "higher", "lower", "greater", "less",
-
-    # Common scientific/academic verbs
-    "study", "research", "investigate", "analyze", "present", "provide",
+    
+    # Generic scientific/academic verbs
+    "investigate", "analyze", "present", "provide",
     "describe", "report", "summarize", "conclude", "discuss", "demonstrate",
-
+    
     # Paper-specific but non-informative terms
-    "ship", "cruise", "instrument", "time", "period", "location",
+    "ship", "cruise", "instrument", "period", "location",
     "university", "department", "author", "error", "deviation",
-
-    # Common domain terms that would oversaturate results
-    "wave", "sea", "ice", "ocean", "arctic", "model", "attenuation",
-    "section", "fig", "table", "measured", "shown", "found", "used"}
+    
+    # Generic terms that don't add value
+    "section", "chapter", "page", "example", "case",
+    
+    # Keep these terms - they could be important variables!
+    # "wave", "sea", "ice", "ocean", "arctic" - these are often part of key measurements
+    # "model" - often part of "climate model output" which is a data source
+    # "attenuation" - this is a measurable parameter
+    # "parameter", "frequency" - these are often variables
+    # "time" - often part of "response time", "lag time" etc.
+    # "data", "analysis", "method" - might be part of specific techniques
+    # "increase", "decrease" - might be part of "temperature increase" etc.
+    # "table" - might be part of "water table"
+    
+    # Additional non-informative terms to filter
+    "therefore", "however", "moreover", "furthermore", "thus", "hence",
+    "although", "though", "whereas", "while", "since", "because",
+    "first", "second", "third", "finally", "lastly", "next",
+    "may", "might", "could", "would", "should", "must", "shall",
+    "using", "used", "use", "uses", "based", "basis"
+}
 ## be careful with stopwords-custom, if possible make it to list before passing into models like keybert
 ''' check on input_text'''
 
@@ -161,6 +182,11 @@ def extract_keywords(input_text, k):
             for j in range(i + 1, len(lines)):
                 next_line = lines[j].strip()
                 
+                # More aggressive stop conditions for Keywords section
+                # Check if this looks like a numbered section (1 Introduction, 2 Methods, etc.)
+                if re.match(r"^\d+\s+\w+", next_line, re.IGNORECASE):
+                    break
+                    
                 # Stop conditions - detect new sections or structural elements
                 stop_patterns = [
                     r"^\s*\d+[\.\)]\s+\w+",  # e.g., "1. Introduction", "1) Methods"
@@ -193,8 +219,8 @@ def extract_keywords(input_text, k):
                 if next_line and not next_line.startswith("keywords"):
                     keyword_lines.append(next_line)
                     
-                # Limit to reasonable number of lines (e.g., 10)
-                if j - i > 10:
+                # Limit to reasonable number of lines for keywords section
+                if j - i > 3:  # Keywords section is usually 1-3 lines max
                     break
             break
 
@@ -219,7 +245,8 @@ def extract_keywords(input_text, k):
         full_kw_text = full_kw_text.replace("—", ",")
         
         # Remove unwanted characters but keep commas, spaces, letters, numbers, hyphens
-        full_kw_text = re.sub(r"[^\w,\-\s]", " ", full_kw_text)
+        # NOTE: This happens AFTER we've replaced separators with commas
+        full_kw_text = re.sub(r"[^\w,\-\s]", "", full_kw_text)
         
         # Split by comma and clean each keyword
         potential_keywords = full_kw_text.split(",")
@@ -243,7 +270,15 @@ def extract_keywords(input_text, k):
         print(f"Extracted keywords: {list_keywords}")
         
         if list_keywords:
-            return list_keywords[:k] if len(list_keywords) > k else list_keywords
+            # Return keywords and metadata about extraction method
+            result = list_keywords[:k] if len(list_keywords) > k else list_keywords
+            # Store info about Keywords section detection for UI display
+            result_with_metadata = {
+                'keywords': result,
+                'from_keywords_section': True,
+                'total_found': len(list_keywords)
+            }
+            return result_with_metadata
 
     # TF-IDF
     input_text=cleaning_extracted_text(input_text)
@@ -376,7 +411,15 @@ def extract_keywords(input_text, k):
         print((i, j))
 
     print('The extracted Keywords are :', list_keywords)
-    return list_keywords
+    
+    # Return keywords and metadata about extraction method (using TF-IDF/YAKE/KeyBERT)
+    result_with_metadata = {
+        'keywords': list_keywords,
+        'from_keywords_section': False,
+        'total_found': len(list_keywords),
+        'method': 'Combined (TF-IDF + YAKE + KeyBERT)'
+    }
+    return result_with_metadata
 
 
 
@@ -397,8 +440,49 @@ def text_chunks(input_text, chunk_size=2000, overlap=300):
 import re
 import ollama
 
-def extract_relations_llama_all(text, keyword_pairs):
-    prompt = f"""
+def extract_relations_llama_all(text, keyword_pairs, focus_on_variables=False):
+    if focus_on_variables:
+        prompt = f"""
+You are an expert assistant trained to extract causal and quantitative relationships between MEASURABLE VARIABLES from climate science research.
+
+Your task is to analyze the following scientific text and identify relationships between measurable variables/parameters.
+
+TEXT:
+{text}
+
+VARIABLE PAIRS:
+{', '.join([f'("{a}", "{b}")' for a, b in keyword_pairs])}
+
+INSTRUCTIONS:
+
+1. Output format:
+   (VARIABLE_1, RELATION, VARIABLE_2)
+
+2. Focus on CAUSAL and QUANTITATIVE relationships:
+   - INCREASES, DECREASES, CORRELATES_WITH, CAUSES, INHIBITS
+   - MODULATES, DRIVES, REGULATES, DEPENDS_ON, INFLUENCES
+   - MEASURED_WITH, PROPORTIONAL_TO, INVERSELY_RELATED
+
+3. Only use the provided variables exactly as they appear.
+
+4. RELATION format: UPPERCASE with underscores (no spaces)
+
+5. Only output relationships that describe how one variable affects or relates to another quantitatively.
+
+6. If no clear quantitative/causal relation exists, do not output that pair.
+
+7. Do NOT include explanations, summaries, or extra commentary.
+
+EXAMPLE OUTPUT:
+(temperature, INCREASES, ice melt)
+(salinity, CORRELATES_WITH, density)
+
+Now return one relation per line in this exact format:
+(VARIABLE_1, RELATION, VARIABLE_2)
+"""
+    else:
+        # Original prompt for general keyword relations
+        prompt = f"""
 You are an expert assistant trained to extract semantic relationships from Arctic and climate science research papers.
 
 Your task is to analyze the following scientific text and infer meaningful relationships between each keyword pair listed below.
@@ -428,11 +512,7 @@ INSTRUCTIONS:
 
 5. If no clear relation is found, use: RELATED_TO
 
-6. Do NOT include explanations, summaries, or extra commentary.
-7. If any output line contains keywords that are NOT from the provided list, discard that line.
-
-8. Do NOT include notes, summaries, explanations, or invented phrases. Output ONLY relation triples.
-
+6. Do NOT include notes, summaries, explanations, or invented phrases. Output ONLY relation triples.
 
 EXAMPLE OUTPUT:
 (wave height, MEASURED_BY, altimeter)
@@ -441,6 +521,7 @@ EXAMPLE OUTPUT:
 Now return one relation per line in this exact format:
 (KEYWORD_1, RELATION, KEYWORD_2)
 """
+    
     # Call Ollama
     response = ollama.chat(model="llama3", messages=[{"role": "user", "content": prompt}])
     content = response['message']['content']
@@ -577,23 +658,68 @@ Important:
 
 
 
-def process(file_path, k):
+def process(file_path, k, filter_variables=True):
     model = SentenceTransformer("all-MiniLM-L6-v2")
 
     input_text = text_extraction(file_path)
     print('Input text checking:', input_text[:3000])
 
     # Step 0: Extract keywords
-    keywords = extract_keywords(input_text, k)
+    keywords_result = extract_keywords(input_text, k)
+    
+    # Handle both old format (list) and new format (dict with metadata)
+    if isinstance(keywords_result, dict):
+        keywords = keywords_result['keywords']
+        keywords_metadata = keywords_result
+        # Log if Keywords section was found
+        if keywords_result.get('from_keywords_section'):
+            print(f"✅ Keywords section found! Extracted {keywords_result['total_found']} keywords from Keywords section")
+        else:
+            print(f"ℹ️ No Keywords section found. Using {keywords_result.get('method', 'algorithmic extraction')}")
+    else:
+        # Backward compatibility - in case old format is still returned somehow
+        keywords = keywords_result
+        keywords_metadata = None
+    
     print(f"\nExtracted Keywords are: {keywords}")
     
     # Extract dataset information
     dataset_info = extract_dataset_info(input_text)
     print(f"\nExtracted Dataset Info: {dataset_info}")
 
+    # Step 0.5: Filter for variables only (if enabled)
+    original_keywords = keywords.copy()
+    if filter_variables:
+        from variable_filter import VariableFilter
+        vf = VariableFilter()
+        
+        # Filter keywords to get only variables
+        filtered_result = vf.filter_variables(keywords)
+        variables = filtered_result['variables']
+        non_variables = filtered_result['non_variables']
+        
+        print(f"\n🔬 Variable Filtering Applied:")
+        print(f"   Original keywords: {len(keywords)}")
+        print(f"   Variables identified: {len(variables)}")
+        print(f"   Non-variables removed: {len(non_variables)}")
+        
+        if variables:
+            print(f"   Variables kept: {', '.join(variables[:10])}{' ...' if len(variables) > 10 else ''}")
+        if non_variables:
+            print(f"   Removed: {', '.join(non_variables[:10])}{' ...' if len(non_variables) > 10 else ''}")
+        
+        # Use only variables for relation extraction
+        keywords = variables
+        
+        # If no variables found, fall back to original keywords
+        if not keywords:
+            print("   ⚠️ No variables identified! Using original keywords.")
+            keywords = original_keywords
+            filter_variables = False  # Disable filtering for edges later
+    
     # Normalize for consistency
     filtered_candidates = [kw.lower().strip() for kw in keywords]
-    print(f"\nFiltered Keywords: {filtered_candidates}")
+    print(f"\nKeywords for relation extraction: {filtered_candidates}")
 
     # Step 1: Chunk the text
     chunks = text_chunks(input_text)
@@ -604,7 +730,7 @@ def process(file_path, k):
 
     for c in chunks:
         keyword_pairs = extract_all_keyword_pairs(filtered_candidates)
-        extracted = extract_relations_llama_all(c, keyword_pairs)
+        extracted = extract_relations_llama_all(c, keyword_pairs, focus_on_variables=filter_variables)
 
         # Filter hallucinated or off-topic relations
         filtered_relations = [
@@ -646,4 +772,14 @@ def process(file_path, k):
             "score": score
         })
 
-    return list(neo4j_nodes), neo4j_edges, dataset_info
+    # Include filtering info in keywords_metadata if filtering was applied
+    if filter_variables and keywords_metadata:
+        keywords_metadata['filtering_applied'] = True
+        keywords_metadata['original_keywords'] = original_keywords
+        keywords_metadata['filtered_keywords'] = keywords
+        keywords_metadata['removed_keywords'] = list(set(original_keywords) - set(keywords))
+    elif keywords_metadata:
+        keywords_metadata['filtering_applied'] = False
+    
+    # Return nodes, edges, dataset_info, and keywords_metadata
+    return list(neo4j_nodes), neo4j_edges, dataset_info, keywords_metadata

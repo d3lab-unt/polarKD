@@ -3,11 +3,28 @@ from pyvis.network import Network
 import re
 import pandas as pd
 import json
+import os
+from pathlib import Path
+from dotenv import load_dotenv
 
-# Neo4j credentials - Updated to new instance
-NEO4J_URI='neo4j+s://0d4ad98d.databases.neo4j.io'
-NEO4J_USER='neo4j'
-NEO4J_PASSWORD='l2eTsa3JmSPkwWoCCNszhUyvkxkapl3WwN2oHzJZJ6E'
+# Load environment variables from .env file
+# Look for .env in parent directory (Knowledge_graph/.env)
+env_path = Path(__file__).parent.parent / '.env'
+load_dotenv(dotenv_path=env_path)
+
+# Neo4j credentials - Now loaded from environment variables
+NEO4J_URI = os.getenv('NEO4J_URI')
+NEO4J_USER = os.getenv('NEO4J_USER')
+NEO4J_PASSWORD = os.getenv('NEO4J_PASSWORD')
+
+# Validate that credentials are loaded
+if not all([NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD]):
+    raise ValueError(
+        "Neo4j credentials not found! Please ensure .env file exists with:\n"
+        "NEO4J_URI=your_uri\n"
+        "NEO4J_USER=your_user\n"
+        "NEO4J_PASSWORD=your_password"
+    )
 
 def clean_text(text):
     c = re.sub(r"^\d+\.\s*", "", text.strip())
