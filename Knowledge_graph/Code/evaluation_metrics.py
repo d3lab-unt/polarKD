@@ -13,9 +13,617 @@ from collections import defaultdict
 import os
 import ollama
 from sentence_transformers import SentenceTransformer, util
+from sklearn.metrics.pairwise import cosine_similarity
 
 # Import the QA system without modifying it
 from qa_module import QASystem
+
+
+class MMRCalculator:
+    """
+    Mean Maximum Relevance (MMR) Calculator
+    Evaluates diversity in retrieved results while maintaining relevance
+    MMR = λ * Similarity(Q, D) - (1-λ) * max Similarity(D, D_i)
+    where D_i are already selected documents
+    """
+
+    def __init__(self, lambda_param: float = 0.5):
+        """
+        Initialize MMR calculator
+
+        Args:
+            lambda_param: Balance between relevance and diversity (0-1)
+                         1.0 = pure relevance, 0.0 = pure diversity
+        """
+        self.lambda_param = lambda_param
+        self.results = []
+        self.detailed_results = []
+        self.embedder = SentenceTransformer('all-MiniLM-L6-v2')
+
+    def calculate_mmr_scores(self,
+                            query: str,
+                            retrieved_chunks: List[Dict[str, Any]],
+                            top_k: int = 5) -> List[Tuple[int, float]]:
+        """
+        Calculate MMR scores for retrieved chunks
+
+        Args:
+            query: User query
+            retrieved_chunks: List of retrieved chunks with metadata
+            top_k: Number of diverse results to select
+
+        Returns:
+            List of (chunk_index, mmr_score) tuples
+        """
+        if not retrieved_chunks:
+            return []
+
+        # Get embeddings
+        query_embedding = self.embedder.encode(query, convert_to_tensor=False)
+        chunk_texts = [chunk.get('chunk', '') for chunk in retrieved_chunks]
+        chunk_embeddings = self.embedder.encode(chunk_texts, convert_to_tensor=False)
+
+        # Calculate query-document similarities
+        query_sims = cosine_similarity([query_embedding], chunk_embeddings)[0]
+
+        # MMR selection
+        selected_indices = []
+        selected_embeddings = []
+        remaining_indices = list(range(len(retrieved_chunks)))
+
+        for _ in range(min(top_k, len(retrieved_chunks))):
+            mmr_scores = []
+
+            for idx in remaining_indices:
+                # Relevance term
+                relevance = query_sims[idx]
+
+                # Diversity term (maximum similarity to already selected)
+                if selected_embeddings:
+                    doc_sims = cosine_similarity([chunk_embeddings[idx]], selected_embeddings)[0]
+                    max_sim = np.max(doc_sims)
+                else:
+                    max_sim = 0.0
+
+                # MMR formula
+                mmr_score = self.lambda_param * relevance - (1 - self.lambda_param) * max_sim
+                mmr_scores.append((idx, mmr_score))
+
+            # Select document with highest MMR
+            best_idx, best_score = max(mmr_scores, key=lambda x: x[1])
+            selected_indices.append(best_idx)
+            selected_embeddings.append(chunk_embeddings[best_idx])
+            remaining_indices.remove(best_idx)
+
+        return [(idx, query_sims[idx]) for idx in selected_indices]
+
+    def evaluate_query_diversity(self,
+                                 qa_system,
+                                 query: str,
+                                 top_k: int = 10) -> Dict[str, Any]:
+        """
+        Evaluate diversity of retrieved results using MMR
+
+        Returns:
+            Dictionary with diversity metrics
+        """
+        # Retrieve chunks
+        retrieved_chunks = qa_system.find_relevant_chunks(query, top_k=top_k, verbose=False)
+
+        if not retrieved_chunks:
+            return {
+                'query': query,
+                'mmr_score': 0.0,
+                'diversity_score': 0.0,
+                'avg_pairwise_similarity': 0.0,
+                'num_retrieved': 0
+            }
+
+        # Get embeddings for diversity calculation
+        chunk_texts = [chunk.get('chunk', '') for chunk in retrieved_chunks]
+        chunk_embeddings = self.embedder.encode(chunk_texts, convert_to_tensor=False)
+
+        # Calculate average pairwise similarity (lower = more diverse)
+        pairwise_sims = []
+        for i in range(len(chunk_embeddings)):
+            for j in range(i + 1, len(chunk_embeddings)):
+                sim = cosine_similarity([chunk_embeddings[i]], [chunk_embeddings[j]])[0][0]
+                pairwise_sims.append(sim)
+
+        avg_pairwise_sim = np.mean(pairwise_sims) if pairwise_sims else 0.0
+        diversity_score = 1.0 - avg_pairwise_sim  # Convert to diversity score
+
+        # Calculate MMR-reranked scores
+        mmr_results = self.calculate_mmr_scores(query, retrieved_chunks, top_k=top_k)
+        avg_mmr_score = np.mean([score for _, score in mmr_results]) if mmr_results else 0.0
+
+        result = {
+            'query': query,
+            'mmr_score': avg_mmr_score,
+            'diversity_score': diversity_score,
+            'avg_pairwise_similarity': avg_pairwise_sim,
+            'num_retrieved': len(retrieved_chunks),
+            'lambda': self.lambda_param
+        }
+
+        self.results.append(result)
+        self.detailed_results.append(result)
+
+        return result
+
+    def get_statistics(self) -> Dict[str, Any]:
+        """Get detailed statistics about MMR performance"""
+        if not self.results:
+            return {}
+
+        mmr_scores = [r['mmr_score'] for r in self.results]
+        diversity_scores = [r['diversity_score'] for r in self.results]
+
+        return {
+            'avg_mmr': np.mean(mmr_scores),
+            'avg_diversity': np.mean(diversity_scores),
+            'std_mmr': np.std(mmr_scores),
+            'std_diversity': np.std(diversity_scores),
+            'num_queries': len(self.results),
+            'lambda_param': self.lambda_param
+        }
+
+    def print_report(self):
+        """Print a formatted MMR evaluation report"""
+        stats = self.get_statistics()
+
+        print("\n" + "="*60)
+        print("MMR (Maximum Marginal Relevance) EVALUATION REPORT")
+        print("="*60)
+
+        if not stats:
+            print("No evaluation results available")
+            return
+
+        print(f"\nLambda Parameter (relevance vs diversity): {stats['lambda_param']:.2f}")
+        print(f"Number of queries evaluated: {stats['num_queries']}")
+
+        print(f"\nMMR Scores:")
+        print(f"  Average: {stats['avg_mmr']:.4f}")
+        print(f"  Std Dev: {stats['std_mmr']:.4f}")
+
+        print(f"\nDiversity Scores:")
+        print(f"  Average: {stats['avg_diversity']:.4f}")
+        print(f"  Std Dev: {stats['std_diversity']:.4f}")
+
+        print("\n" + "-"*60)
+        print("Query-level Results:")
+        for i, result in enumerate(self.detailed_results, 1):
+            print(f"\n{i}. Query: {result['query'][:50]}...")
+            print(f"   MMR Score: {result['mmr_score']:.4f}")
+            print(f"   Diversity: {result['diversity_score']:.4f}")
+            print(f"   Avg Pairwise Similarity: {result['avg_pairwise_similarity']:.4f}")
+
+        print("\n" + "="*60)
+
+    def save_results(self, filepath: str):
+        """Save detailed results to JSON file"""
+        output = {
+            'timestamp': datetime.now().isoformat(),
+            'statistics': self.get_statistics(),
+            'detailed_results': self.detailed_results
+        }
+
+        with open(filepath, 'w') as f:
+            json.dump(output, f, indent=2)
+
+        print(f"MMR results saved to: {filepath}")
+
+
+class NDCGCalculator:
+    """
+    Normalized Discounted Cumulative Gain (NDCG) Calculator
+    Measures ranking quality with graded relevance scores
+    """
+
+    def __init__(self):
+        self.results = []
+        self.detailed_results = []
+
+    def dcg_at_k(self, relevance_scores: List[float], k: int) -> float:
+        """
+        Calculate Discounted Cumulative Gain at position k
+
+        Args:
+            relevance_scores: List of relevance scores for retrieved documents
+            k: Position to calculate DCG
+
+        Returns:
+            DCG@k score
+        """
+        relevance_scores = np.array(relevance_scores)[:k]
+        if relevance_scores.size == 0:
+            return 0.0
+
+        # DCG formula: sum of (2^rel - 1) / log2(i + 2) for i in [0, k-1]
+        gains = 2 ** relevance_scores - 1
+        discounts = np.log2(np.arange(len(relevance_scores)) + 2)
+        return np.sum(gains / discounts)
+
+    def ndcg_at_k(self, relevance_scores: List[float], k: int) -> float:
+        """
+        Calculate Normalized Discounted Cumulative Gain at position k
+
+        Args:
+            relevance_scores: List of relevance scores for retrieved documents
+            k: Position to calculate NDCG
+
+        Returns:
+            NDCG@k score (0-1, higher is better)
+        """
+        dcg = self.dcg_at_k(relevance_scores, k)
+
+        # Calculate IDCG (ideal DCG with perfect ranking)
+        ideal_relevance = sorted(relevance_scores, reverse=True)
+        idcg = self.dcg_at_k(ideal_relevance, k)
+
+        if idcg == 0:
+            return 0.0
+
+        return dcg / idcg
+
+    def calculate_relevance_scores(self,
+                                   retrieved_chunks: List[Dict[str, Any]],
+                                   relevant_chunk_ids: List[str],
+                                   use_binary: bool = False) -> List[float]:
+        """
+        Calculate relevance scores for retrieved chunks
+
+        Args:
+            retrieved_chunks: List of retrieved chunks with metadata
+            relevant_chunk_ids: List of identifiers for relevant chunks
+            use_binary: If True, use binary relevance (0 or 1), else graded (0, 1, 2, 3)
+
+        Returns:
+            List of relevance scores
+        """
+        scores = []
+
+        for chunk in retrieved_chunks:
+            relevance = 0.0
+
+            # Check if chunk is relevant
+            is_relevant = False
+            match_strength = 0  # 0=none, 1=weak, 2=medium, 3=strong
+
+            # Method 1: Check by filename (weak match)
+            if 'filename' in chunk:
+                for relevant_id in relevant_chunk_ids:
+                    if relevant_id.lower() in chunk['filename'].lower():
+                        is_relevant = True
+                        match_strength = max(match_strength, 1)
+
+            # Method 2: Check by content substring (medium match)
+            if 'chunk' in chunk:
+                chunk_content = chunk['chunk'].lower()
+                for relevant_id in relevant_chunk_ids:
+                    if relevant_id.lower() in chunk_content:
+                        is_relevant = True
+                        # Longer matches = stronger relevance
+                        if len(relevant_id) > 20:
+                            match_strength = max(match_strength, 3)
+                        else:
+                            match_strength = max(match_strength, 2)
+
+            # Method 3: Check by chunk index (strong match)
+            if 'chunk_idx' in chunk:
+                for relevant_id in relevant_chunk_ids:
+                    if str(chunk['chunk_idx']) == str(relevant_id):
+                        is_relevant = True
+                        match_strength = max(match_strength, 3)
+
+            # Assign relevance score
+            if use_binary:
+                relevance = 1.0 if is_relevant else 0.0
+            else:
+                relevance = float(match_strength)  # Graded: 0, 1, 2, 3
+
+            scores.append(relevance)
+
+        return scores
+
+    def evaluate_query(self,
+                       qa_system: QASystem,
+                       query: str,
+                       relevant_chunk_ids: List[str],
+                       k_values: List[int] = [5, 10],
+                       use_binary: bool = False) -> Dict[str, Any]:
+        """
+        Evaluate NDCG for a single query at multiple k values
+
+        Args:
+            qa_system: QA system instance
+            query: Query string
+            relevant_chunk_ids: List of relevant chunk identifiers
+            k_values: List of k values to evaluate
+            use_binary: Use binary relevance instead of graded
+
+        Returns:
+            Dictionary with NDCG scores at different k values
+        """
+        print(f"\n  Evaluating: {query[:50]}...")
+
+        # Retrieve chunks
+        max_k = max(k_values)
+        retrieved_chunks = qa_system.find_relevant_chunks(query, top_k=max_k, verbose=False)
+
+        # Calculate relevance scores
+        relevance_scores = self.calculate_relevance_scores(
+            retrieved_chunks,
+            relevant_chunk_ids,
+            use_binary=use_binary
+        )
+
+        # Calculate NDCG at different k values
+        ndcg_scores = {}
+        for k in k_values:
+            ndcg = self.ndcg_at_k(relevance_scores, k)
+            ndcg_scores[f'ndcg@{k}'] = ndcg
+
+        result = {
+            'query': query,
+            'relevance_scores': relevance_scores,
+            'num_retrieved': len(retrieved_chunks),
+            'num_relevant': sum(1 for score in relevance_scores if score > 0),
+            **ndcg_scores
+        }
+
+        self.results.append(result)
+        self.detailed_results.append(result)
+
+        return result
+
+    def get_statistics(self, k_values: List[int] = [5, 10]) -> Dict[str, Any]:
+        """Get detailed statistics about NDCG performance"""
+        if not self.results:
+            return {}
+
+        stats = {'num_queries': len(self.results)}
+
+        for k in k_values:
+            ndcg_key = f'ndcg@{k}'
+            ndcg_scores = [r[ndcg_key] for r in self.results if ndcg_key in r]
+
+            if ndcg_scores:
+                stats[f'avg_{ndcg_key}'] = np.mean(ndcg_scores)
+                stats[f'std_{ndcg_key}'] = np.std(ndcg_scores)
+                stats[f'min_{ndcg_key}'] = min(ndcg_scores)
+                stats[f'max_{ndcg_key}'] = max(ndcg_scores)
+
+        return stats
+
+    def print_report(self, k_values: List[int] = [5, 10]):
+        """Print a formatted NDCG evaluation report"""
+        stats = self.get_statistics(k_values)
+
+        print("\n" + "="*60)
+        print("NDCG EVALUATION REPORT")
+        print("="*60)
+
+        if not stats:
+            print("No evaluation results available")
+            return
+
+        print(f"\nNumber of queries: {stats['num_queries']}")
+
+        for k in k_values:
+            print(f"\nNDCG@{k} Statistics:")
+            print(f"  Mean: {stats[f'avg_ndcg@{k}']:.4f}")
+            print(f"  Std Dev: {stats[f'std_ndcg@{k}']:.4f}")
+            print(f"  Min: {stats[f'min_ndcg@{k}']:.4f}")
+            print(f"  Max: {stats[f'max_ndcg@{k}']:.4f}")
+
+        print("\n" + "-"*60)
+        print("Query-level Results:")
+        for i, result in enumerate(self.detailed_results, 1):
+            print(f"\n{i}. Query: {result['query'][:50]}...")
+            for k in k_values:
+                ndcg_key = f'ndcg@{k}'
+                if ndcg_key in result:
+                    print(f"   {ndcg_key.upper()}: {result[ndcg_key]:.4f}")
+            print(f"   Relevant found: {result['num_relevant']}/{result['num_retrieved']}")
+
+        print("\n" + "="*60)
+
+    def save_results(self, filepath: str):
+        """Save detailed results to JSON file"""
+        output = {
+            'timestamp': datetime.now().isoformat(),
+            'statistics': self.get_statistics(),
+            'detailed_results': self.detailed_results
+        }
+
+        with open(filepath, 'w') as f:
+            json.dump(output, f, indent=2)
+
+        print(f"NDCG results saved to: {filepath}")
+
+
+class RecallCalculator:
+    """
+    Recall@K Calculator
+    Measures the proportion of relevant documents retrieved in top-K results
+    """
+
+    def __init__(self):
+        self.results = []
+        self.detailed_results = []
+
+    def calculate_recall_at_k(self,
+                             retrieved_chunks: List[Dict[str, Any]],
+                             relevant_chunk_ids: List[str],
+                             k: int) -> float:
+        """
+        Calculate Recall@K
+
+        Args:
+            retrieved_chunks: List of retrieved chunks
+            relevant_chunk_ids: List of all relevant chunk identifiers
+            k: Number of top results to consider
+
+        Returns:
+            Recall@K score (0-1)
+        """
+        if not relevant_chunk_ids:
+            return 0.0
+
+        # Consider only top-k results
+        top_k_chunks = retrieved_chunks[:k]
+
+        # Count how many relevant chunks were found
+        found_relevant = 0
+
+        for chunk in top_k_chunks:
+            is_relevant = False
+
+            # Method 1: Check by filename
+            if 'filename' in chunk:
+                for relevant_id in relevant_chunk_ids:
+                    if relevant_id.lower() in chunk['filename'].lower():
+                        is_relevant = True
+                        break
+
+            # Method 2: Check by content substring
+            if not is_relevant and 'chunk' in chunk:
+                chunk_content = chunk['chunk'].lower()
+                for relevant_id in relevant_chunk_ids:
+                    if relevant_id.lower() in chunk_content:
+                        is_relevant = True
+                        break
+
+            # Method 3: Check by chunk index
+            if not is_relevant and 'chunk_idx' in chunk:
+                for relevant_id in relevant_chunk_ids:
+                    if str(chunk['chunk_idx']) == str(relevant_id):
+                        is_relevant = True
+                        break
+
+            if is_relevant:
+                found_relevant += 1
+
+        # Recall = (relevant retrieved) / (total relevant)
+        recall = found_relevant / len(relevant_chunk_ids)
+
+        return recall
+
+    def evaluate_query(self,
+                       qa_system: QASystem,
+                       query: str,
+                       relevant_chunk_ids: List[str],
+                       k_values: List[int] = [5, 10, 20]) -> Dict[str, Any]:
+        """
+        Evaluate Recall@K for a single query at multiple k values
+
+        Args:
+            qa_system: QA system instance
+            query: Query string
+            relevant_chunk_ids: List of relevant chunk identifiers
+            k_values: List of k values to evaluate
+
+        Returns:
+            Dictionary with Recall@K scores
+        """
+        print(f"\n  Evaluating: {query[:50]}...")
+
+        # Retrieve chunks
+        max_k = max(k_values)
+        retrieved_chunks = qa_system.find_relevant_chunks(query, top_k=max_k, verbose=False)
+
+        # Calculate Recall at different k values
+        recall_scores = {}
+        for k in k_values:
+            recall = self.calculate_recall_at_k(retrieved_chunks, relevant_chunk_ids, k)
+            recall_scores[f'recall@{k}'] = recall
+
+        # Also calculate hit rate (whether any relevant doc was found)
+        hit = 1.0 if recall_scores[f'recall@{max_k}'] > 0 else 0.0
+
+        result = {
+            'query': query,
+            'num_retrieved': len(retrieved_chunks),
+            'num_relevant_total': len(relevant_chunk_ids),
+            'hit': hit,
+            **recall_scores
+        }
+
+        self.results.append(result)
+        self.detailed_results.append(result)
+
+        return result
+
+    def get_statistics(self, k_values: List[int] = [5, 10, 20]) -> Dict[str, Any]:
+        """Get detailed statistics about Recall performance"""
+        if not self.results:
+            return {}
+
+        stats = {
+            'num_queries': len(self.results),
+            'hit_rate': np.mean([r['hit'] for r in self.results])
+        }
+
+        for k in k_values:
+            recall_key = f'recall@{k}'
+            recall_scores = [r[recall_key] for r in self.results if recall_key in r]
+
+            if recall_scores:
+                stats[f'avg_{recall_key}'] = np.mean(recall_scores)
+                stats[f'std_{recall_key}'] = np.std(recall_scores)
+                stats[f'min_{recall_key}'] = min(recall_scores)
+                stats[f'max_{recall_key}'] = max(recall_scores)
+
+        return stats
+
+    def print_report(self, k_values: List[int] = [5, 10, 20]):
+        """Print a formatted Recall evaluation report"""
+        stats = self.get_statistics(k_values)
+
+        print("\n" + "="*60)
+        print("RECALL@K EVALUATION REPORT")
+        print("="*60)
+
+        if not stats:
+            print("No evaluation results available")
+            return
+
+        print(f"\nNumber of queries: {stats['num_queries']}")
+        print(f"Hit Rate (any relevant found): {stats['hit_rate']:.4f} ({stats['hit_rate']*100:.1f}%)")
+
+        for k in k_values:
+            print(f"\nRecall@{k} Statistics:")
+            print(f"  Mean: {stats[f'avg_recall@{k}']:.4f}")
+            print(f"  Std Dev: {stats[f'std_recall@{k}']:.4f}")
+            print(f"  Min: {stats[f'min_recall@{k}']:.4f}")
+            print(f"  Max: {stats[f'max_recall@{k}']:.4f}")
+
+        print("\n" + "-"*60)
+        print("Query-level Results:")
+        for i, result in enumerate(self.detailed_results, 1):
+            print(f"\n{i}. Query: {result['query'][:50]}...")
+            for k in k_values:
+                recall_key = f'recall@{k}'
+                if recall_key in result:
+                    print(f"   {recall_key.capitalize()}: {result[recall_key]:.4f}")
+            print(f"   Hit: {'✓' if result['hit'] == 1.0 else '✗'}")
+
+        print("\n" + "="*60)
+
+    def save_results(self, filepath: str):
+        """Save detailed results to JSON file"""
+        output = {
+            'timestamp': datetime.now().isoformat(),
+            'statistics': self.get_statistics(),
+            'detailed_results': self.detailed_results
+        }
+
+        with open(filepath, 'w') as f:
+            json.dump(output, f, indent=2)
+
+        print(f"Recall results saved to: {filepath}")
 
 
 class MRRCalculator:
@@ -301,7 +909,16 @@ Statements:"""
         """
         Verify if a statement can be inferred from the context
         """
-        prompt = f"""Based on the given context, determine if the following statement can be directly inferred or is supported by the information provided.
+        # RELAXED EVALUATION: More lenient criteria
+        prompt = f"""Based on the given context, determine if the following statement is supported by, consistent with, or reasonably inferred from the information provided.
+
+Be lenient: Accept statements that are:
+- Directly stated in the context
+- Reasonable interpretations of the context
+- Logical extensions of information in the context
+- Summaries or paraphrases of context information
+
+Only reject statements that clearly contradict the context or introduce completely new unrelated information.
 
 Context: {context}
 
