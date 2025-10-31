@@ -18,6 +18,19 @@ st.set_page_config(
 # Custom CSS for Light Theme
 st.markdown("""
 <style>
+    /* Logo inside header */
+    .main-header {
+        position: relative !important;
+    }
+
+    .main-header img.logo {
+        position: absolute !important;
+        top: 1rem !important;
+        right: 1.5rem !important;
+        height: 70px !important;
+        width: auto !important;
+    }
+
     /* Force light theme throughout */
     .stApp {
         background-color: #ffffff !important;
@@ -385,6 +398,22 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
+# Load logo data for header
+logo_data = None
+logo_type = None
+logo_path = os.path.join(os.path.dirname(__file__), "..", "iharp-logo.jpg")
+if os.path.exists(logo_path):
+    with open(logo_path, "rb") as f:
+        logo_data = base64.b64encode(f.read()).decode()
+    logo_type = "jpeg"
+else:
+    # Fallback: try PNG name
+    logo_path = os.path.join(os.path.dirname(__file__), "..", "iharp_logo.png")
+    if os.path.exists(logo_path):
+        with open(logo_path, "rb") as f:
+            logo_data = base64.b64encode(f.read()).decode()
+        logo_type = "png"
+
 # Initialize session state
 if 'uploaded_files' not in st.session_state:
     st.session_state.uploaded_files = []
@@ -397,8 +426,16 @@ if 'processed_pdfs' not in st.session_state:
 if 'current_graph' not in st.session_state:
     st.session_state.current_graph = None
 
-# Header
-st.markdown("""
+# Header with embedded logo
+if logo_data and logo_type:
+    st.markdown(f"""
+<div class="main-header">
+    <img src="data:image/{logo_type};base64,{logo_data}" alt="iHARP Logo" class="logo">
+    <h1> Polar Knowledge Discovery (PolarKD) Toolkit</h1>
+</div>
+""", unsafe_allow_html=True)
+else:
+    st.markdown("""
 <div class="main-header">
     <h1> Polar Knowledge Discovery (PolarKD) Toolkit</h1>
 </div>

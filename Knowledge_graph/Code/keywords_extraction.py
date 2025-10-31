@@ -190,6 +190,7 @@ def extract_keywords(input_text, k):
                 # Stop conditions - detect new sections or structural elements
                 stop_patterns = [
                     r"^\s*\d+[\.\)]\s+\w+",  # e.g., "1. Introduction", "1) Methods"
+                    r"^\d+\s+\w+",  # e.g., "1 introduction" (without punctuation)
                     r"^introduction\s*$",  # Section heading
                     r"^abstract\s*$",
                     r"^methods?\s*$",
@@ -523,7 +524,7 @@ Now return one relation per line in this exact format:
 """
     
     # Call Ollama
-    response = ollama.chat(model="llama3", messages=[{"role": "user", "content": prompt}])
+    response = ollama.chat(model="mistral", messages=[{"role": "user", "content": prompt}])
     content = response['message']['content']
 
     # Extract relations using regex
@@ -614,7 +615,7 @@ Important:
     
     try:
         # Call Ollama
-        response = ollama.chat(model="llama3", messages=[{"role": "user", "content": prompt}])
+        response = ollama.chat(model="mistral", messages=[{"role": "user", "content": prompt}])
         content = response['message']['content']
         
         # Try to parse JSON from response
