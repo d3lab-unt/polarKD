@@ -859,7 +859,17 @@ Summary:"""
         """Reset the Q&A system for fresh loading"""
         self.clear_documents()
         print("Q&A system reset - ready for new documents")
-    
+
+    def set_model(self, model_name: str):
+        """
+        Change the LLM model used for answering questions.
+
+        Args:
+            model_name: Name of the Ollama model (e.g., "llama3:latest", "mistral:7b")
+        """
+        self.llm_model = model_name
+        print(f"✅ Q&A model changed to: {model_name}")
+
     def save_faiss_index(self, path: str = "faiss_index.pkl"):
         """Save FAISS index and metadata to disk"""
         if self.use_faiss and self.faiss_index:

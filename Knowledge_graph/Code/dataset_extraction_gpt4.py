@@ -8,6 +8,14 @@ import json
 import time
 from typing import List, Tuple, Dict, Optional
 from dataclasses import dataclass
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+# Look for .env in parent directory (Knowledge_graph/.env)
+env_path = Path(__file__).parent.parent / '.env'
+load_dotenv(dotenv_path=env_path)
+
 from openai import OpenAI
 
 @dataclass
