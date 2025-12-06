@@ -579,11 +579,20 @@ with col2:
                 help="Select the Ollama model for extracting relationships."
             )
 
+            kg_graph_type = st.selectbox(
+                "Graph Visualization Type",
+                options=["Full Graph (with Datasets)", "Knowledge Graph Only (without Datasets)"],
+                index=0,
+                key="kg_graph_type_dialog",
+                help="Choose whether to include dataset nodes in the graph visualization."
+            )
+
             col_confirm, col_cancel = st.columns(2)
             with col_confirm:
                 if st.button("✅ Confirm", use_container_width=True, key="kg_confirm"):
                     st.session_state.show_kg_dialog = False
                     st.session_state.kg_model_selected = kg_model
+                    st.session_state.kg_graph_type_selected = kg_graph_type
                     st.rerun()
             with col_cancel:
                 if st.button("❌ Cancel", use_container_width=True, key="kg_cancel"):
@@ -593,9 +602,21 @@ with col2:
     # Process Knowledge Graph if model was selected
     if 'kg_model_selected' in st.session_state and st.session_state.kg_model_selected and uploaded_files and len(uploaded_files) > 0:
         kg_model = st.session_state.kg_model_selected
-        st.session_state.kg_model_selected = None  # Reset
+        kg_graph_type_ui = st.session_state.get('kg_graph_type_selected', "Full Graph (with Datasets)")
+
+        # Map UI string to parameter value
+        graph_type_map = {
+            "Full Graph (with Datasets)": "with_datasets",
+            "Knowledge Graph Only (without Datasets)": "without_datasets"
+        }
+        kg_graph_type = graph_type_map[kg_graph_type_ui]
+
+        # Reset
+        st.session_state.kg_model_selected = None
+        st.session_state.kg_graph_type_selected = None
 
         st.info(f"Using model: **{kg_model}** for relation extraction")
+        st.info(f"Graph type: **{kg_graph_type_ui}**")
         progress_text = st.empty()
         progress_bar = st.progress(0)
 
@@ -675,7 +696,8 @@ with col2:
                         'datasets': datasets,  # List of datasets
                         'keywords_metadata': keywords_metadata,
                         'used_gpt4': use_gpt4_datasets,
-                        'extraction_cost': extraction_stats.get('total_cost', 0)
+                        'extraction_cost': extraction_stats.get('total_cost', 0),
+                        'graph_type': kg_graph_type  # Store selected graph type
                     }
                 else:
                     # Merge with existing data
@@ -936,10 +958,19 @@ if st.session_state.processed_pdfs:
 
         if all_nodes and all_relations:
             st.write(f"Total: {len(all_nodes)} nodes, {len(all_relations)} relations, {len(all_datasets)} dataset(s)")
+
+            # Get graph type from session state (from the first processed file)
+            graph_type_to_use = 'with_datasets'  # Default
+            if st.session_state.processed_pdfs:
+                first_file = list(st.session_state.processed_pdfs.keys())[0]
+                graph_type_to_use = st.session_state.processed_pdfs[first_file].get('graph_type', 'with_datasets')
+
+            st.info(f"Graph visualization: **{graph_type_to_use.replace('_', ' ').title()}**")
+
             # NEW: Pass entire list of datasets instead of just the first one
             neo.store_keywords_and_relations(all_nodes, all_relations, all_datasets)
             rels = neo.retrieve_relations()
-            graph, expansion_js = neo.generate_graph(rels)
+            graph, expansion_js = neo.generate_graph(rels, graph_type=graph_type_to_use)
             graph.save_graph("graph.html")
             
             # Add expansion JavaScript to the HTML

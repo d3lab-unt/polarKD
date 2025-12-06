@@ -215,38 +215,45 @@ class Neo4jConnector:
                 datasets.append(dict(node))
             return datasets
 
-    def generate_graph(self, relations):
+    def generate_graph(self, relations, graph_type='with_datasets'):
         """
-        Generate graph with a single 'Datasets' hub node.
-        Double-click 'Datasets' → expands to show PRIMARY (green) and CITED (blue) nodes.
+        Generate graph based on visualization type.
+
+        Args:
+            relations: List of relationship dictionaries
+            graph_type: Type of graph to generate
+                - 'with_datasets': Hub-based with collapsible datasets (default)
+                - 'without_datasets': Knowledge graph only (no datasets)
+
+        Returns:
+            tuple: (network, expansion_js)
         """
         net = Network(height="600px", width="100%", directed=True)
-        
+
         # Get node types from database
         with self.driver.session() as session:
             dataset_query = """
-            MATCH (d:Dataset) 
-            RETURN d.name as name, 
+            MATCH (d:Dataset)
+            RETURN d.name as name,
                    d.dataset_type as dataset_type,
                    d.time_period as time_period,
                    d.location as location,
                    d.usage_description as usage_description,
                    d.confidence as confidence
             """
-            dataset_data = session.run(dataset_query).data()
+            # Always load dataset data if graph_type is with_datasets
+            dataset_data = session.run(dataset_query).data() if graph_type == 'with_datasets' else []
             variable_nodes = session.run("MATCH (v:Variable) RETURN v.name as name").data()
-        
+
         dataset_info = {d['name']: d for d in dataset_data}
         variable_names = {v['name'] for v in variable_nodes}
-        
-        # Count PRIMARY and CITED datasets
-        primary_count = sum(1 for d in dataset_data if d.get('dataset_type') == 'primary')
-        cited_count = len(dataset_data) - primary_count
-        
+
         added_nodes = set()
-        
-        # Add "Datasets" hub node if there are datasets
-        if dataset_data:
+
+        # For 'with_datasets': Create hub node
+        if graph_type == 'with_datasets' and dataset_data:
+            primary_count = sum(1 for d in dataset_data if d.get('dataset_type') == 'primary')
+            cited_count = len(dataset_data) - primary_count
             hub_tooltip = f"📊 Datasets Hub\n\n🟩 PRIMARY: {primary_count}\n🔵 CITED: {cited_count}\n\n🖱️ Double-click to expand"
             net.add_node(
                 "📊 Datasets",
@@ -258,17 +265,19 @@ class Neo4jConnector:
                 is_dataset_hub=True
             )
             added_nodes.add("📊 Datasets")
-        
+
         # Process relations (regular nodes)
         for r in relations:
             src = r["source"]
             tgt = r["target"]
             rel = r["relation"]
-            
-            # Skip if source or target is a dataset (they're hidden initially)
+
+            # Skip dataset nodes in relations for both modes
+            # - 'with_datasets': datasets are hidden (only hub visible)
+            # - 'without_datasets': datasets are excluded entirely
             if src in dataset_info or tgt in dataset_info:
                 continue
-            
+
             # Add source node
             if src not in added_nodes:
                 if src in variable_names:
@@ -276,7 +285,7 @@ class Neo4jConnector:
                 else:
                     net.add_node(src, label=src)
                 added_nodes.add(src)
-            
+
             # Add target node
             if tgt not in added_nodes:
                 if tgt in variable_names:
@@ -284,22 +293,26 @@ class Neo4jConnector:
                 else:
                     net.add_node(tgt, label=tgt)
                 added_nodes.add(tgt)
-            
+
             # Add edge
             net.add_edge(src, tgt, label=rel)
-        
-        # Connect Datasets hub to a central keyword node
-        if dataset_data and added_nodes:
-            # Find a central keyword to connect to
-            central_keyword = list(added_nodes)[0] if added_nodes else None
-            if central_keyword and central_keyword != "📊 Datasets":
+
+        # Connect hub to a central keyword (only for 'with_datasets')
+        if graph_type == 'with_datasets' and dataset_data and added_nodes:
+            # Find a central keyword to connect to (exclude the hub itself)
+            keyword_nodes = [n for n in added_nodes if n != "📊 Datasets"]
+            if keyword_nodes:
+                central_keyword = keyword_nodes[0]
                 net.add_edge("📊 Datasets", central_keyword, label="CONTAINS", color='#9c27b0', dashes=True)
-        
+
         net.repulsion(node_distance=200, spring_length=300)
-        
-        # Create JavaScript for double-click expansion
-        expansion_js = self._generate_expansion_javascript(dataset_info)
-        
+
+        # Generate expansion JavaScript only for 'with_datasets'
+        if graph_type == 'with_datasets' and dataset_info:
+            expansion_js = self._generate_expansion_javascript(dataset_info)
+        else:
+            expansion_js = ""
+
         return net, expansion_js
 
     def _generate_expansion_javascript(self, dataset_info):
