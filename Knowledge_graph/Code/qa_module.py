@@ -888,5 +888,43 @@ Summary:"""
             return True
         return False
 
+    def set_model(self, model_name: str):
+        """
+        Change the LLM model used for answering questions.
+
+        Args:
+            model_name: Name of the Ollama model (e.g., "llama3:latest", "mistral:7b")
+        """
+        self.llm_model = model_name
+        print(f"✅ Q&A model changed to: {model_name}")
+
+    def save_faiss_index(self, path: str = "faiss_index.pkl"):
+        """Save FAISS index and metadata to disk"""
+        if self.use_faiss and self.faiss_index:
+            # Save both index and metadata
+            with open(path, 'wb') as f:
+                pickle.dump({
+                    'index': faiss.serialize_index(self.faiss_index),
+                    'metadata': self.chunk_metadata,
+                    'documents': self.documents,
+                    'chunks': self.chunks
+                }, f)
+            print(f"✅ FAISS index saved to {path}")
+    
+    def load_faiss_index(self, path: str = "faiss_index.pkl"):
+        """Load FAISS index and metadata from disk"""
+        if self.use_faiss and os.path.exists(path):
+            with open(path, 'rb') as f:
+                data = pickle.load(f)
+                self.faiss_index = faiss.deserialize_index(data['index'])
+                self.chunk_metadata = data['metadata']
+                self.documents = data['documents']
+                self.chunks = data['chunks']
+            print(f"✅ FAISS index loaded from {path}")
+            print(f"   - Total chunks in index: {self.faiss_index.ntotal}")
+            print(f"   - Documents: {list(self.documents.keys())}")
+            return True
+        return False
+
 # Singleton instance for the application
 qa_system = QASystem()
