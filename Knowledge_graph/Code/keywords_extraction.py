@@ -113,30 +113,51 @@ def scale(s, method="default"):
     return softmax.tolist()
 ## Need to work on multiple keywords in multiple pdfs
 
-stopwords_custom = set(stopwords.words('english')) | {"et", "al","also", "study","paper", "research", "abstract", "methodology","table",
-                                                      "abstract", "introduction", "conclusion", "discussion", "results",
-    "acknowledgments", "references", "et", "al", "doi", "journal",
-
-    # Common measurement and mathematical terms
-    "fig", "figure", "table", "equation", "calculated", "estimated", "observed",
-    "km", "m", "cm", "hz", "measurement", "data", "analysis", "model", "method",
-    "parameter", "frequency", "value", "observation", "estimate",
-
-    # Common descriptive terms
-    "high", "low", "increase", "decrease", "significant", "approximately",
+stopwords_custom = set(stopwords.words('english')) | {
+    # Academic/paper structure terms
+    "et", "al", "also", "study", "paper", "research", "abstract", "methodology",
+    "abstract", "introduction", "conclusion", "discussion", "results",
+    "acknowledgments", "references", "doi", "journal", "publication",
+    
+    # Figures and tables (but not "table" alone as it might be part of "water table")
+    "fig", "figure", "equation", 
+    
+    # Generic measurement descriptors (but keep specific units)
+    "calculated", "estimated", "observed", "measured", "shown", "found", "used",
+    "measurement", "observation", "estimate", "value",
+    
+    # Common descriptive terms (but keep when part of compound terms)
+    "high", "low", "significant", "approximately",
     "large", "small", "compared", "higher", "lower", "greater", "less",
-
-    # Common scientific/academic verbs
-    "study", "research", "investigate", "analyze", "present", "provide",
+    
+    # Generic scientific/academic verbs
+    "investigate", "analyze", "present", "provide",
     "describe", "report", "summarize", "conclude", "discuss", "demonstrate",
-
+    
     # Paper-specific but non-informative terms
-    "ship", "cruise", "instrument", "time", "period", "location",
+    "ship", "cruise", "instrument", "period", "location",
     "university", "department", "author", "error", "deviation",
-
-    # Common domain terms that would oversaturate results
-    "wave", "sea", "ice", "ocean", "arctic", "model", "attenuation",
-    "section", "fig", "table", "measured", "shown", "found", "used"}
+    
+    # Generic terms that don't add value
+    "section", "chapter", "page", "example", "case",
+    
+    # Keep these terms - they could be important variables!
+    # "wave", "sea", "ice", "ocean", "arctic" - these are often part of key measurements
+    # "model" - often part of "climate model output" which is a data source
+    # "attenuation" - this is a measurable parameter
+    # "parameter", "frequency" - these are often variables
+    # "time" - often part of "response time", "lag time" etc.
+    # "data", "analysis", "method" - might be part of specific techniques
+    # "increase", "decrease" - might be part of "temperature increase" etc.
+    # "table" - might be part of "water table"
+    
+    # Additional non-informative terms to filter
+    "therefore", "however", "moreover", "furthermore", "thus", "hence",
+    "although", "though", "whereas", "while", "since", "because",
+    "first", "second", "third", "finally", "lastly", "next",
+    "may", "might", "could", "would", "should", "must", "shall",
+    "using", "used", "use", "uses", "based", "basis"
+}
 ## be careful with stopwords-custom, if possible make it to list before passing into models like keybert
 ''' check on input_text'''
 
@@ -161,9 +182,15 @@ def extract_keywords(input_text, k):
             for j in range(i + 1, len(lines)):
                 next_line = lines[j].strip()
                 
+                # More aggressive stop conditions for Keywords section
+                # Check if this looks like a numbered section (1 Introduction, 2 Methods, etc.)
+                if re.match(r"^\d+\s+\w+", next_line, re.IGNORECASE):
+                    break
+                    
                 # Stop conditions - detect new sections or structural elements
                 stop_patterns = [
                     r"^\s*\d+[\.\)]\s+\w+",  # e.g., "1. Introduction", "1) Methods"
+                    r"^\d+\s+\w+",  # e.g., "1 introduction" (without punctuation)
                     r"^introduction\s*$",  # Section heading
                     r"^abstract\s*$",
                     r"^methods?\s*$",
@@ -193,8 +220,8 @@ def extract_keywords(input_text, k):
                 if next_line and not next_line.startswith("keywords"):
                     keyword_lines.append(next_line)
                     
-                # Limit to reasonable number of lines (e.g., 10)
-                if j - i > 10:
+                # Limit to reasonable number of lines for keywords section
+                if j - i > 3:  # Keywords section is usually 1-3 lines max
                     break
             break
 
@@ -219,7 +246,8 @@ def extract_keywords(input_text, k):
         full_kw_text = full_kw_text.replace("—", ",")
         
         # Remove unwanted characters but keep commas, spaces, letters, numbers, hyphens
-        full_kw_text = re.sub(r"[^\w,\-\s]", " ", full_kw_text)
+        # NOTE: This happens AFTER we've replaced separators with commas
+        full_kw_text = re.sub(r"[^\w,\-\s]", "", full_kw_text)
         
         # Split by comma and clean each keyword
         potential_keywords = full_kw_text.split(",")
@@ -243,7 +271,15 @@ def extract_keywords(input_text, k):
         print(f"Extracted keywords: {list_keywords}")
         
         if list_keywords:
-            return list_keywords[:k] if len(list_keywords) > k else list_keywords
+            # Return keywords and metadata about extraction method
+            result = list_keywords[:k] if len(list_keywords) > k else list_keywords
+            # Store info about Keywords section detection for UI display
+            result_with_metadata = {
+                'keywords': result,
+                'from_keywords_section': True,
+                'total_found': len(list_keywords)
+            }
+            return result_with_metadata
 
     # TF-IDF
     input_text=cleaning_extracted_text(input_text)
@@ -376,7 +412,15 @@ def extract_keywords(input_text, k):
         print((i, j))
 
     print('The extracted Keywords are :', list_keywords)
-    return list_keywords
+    
+    # Return keywords and metadata about extraction method (using TF-IDF/YAKE/KeyBERT)
+    result_with_metadata = {
+        'keywords': list_keywords,
+        'from_keywords_section': False,
+        'total_found': len(list_keywords),
+        'method': 'Combined (TF-IDF + YAKE + KeyBERT)'
+    }
+    return result_with_metadata
 
 
 
@@ -397,8 +441,49 @@ def text_chunks(input_text, chunk_size=2000, overlap=300):
 import re
 import ollama
 
-def extract_relations_llama_all(text, keyword_pairs):
-    prompt = f"""
+def extract_relations_llama_all(text, keyword_pairs, focus_on_variables=False):
+    if focus_on_variables:
+        prompt = f"""
+You are an expert assistant trained to extract causal and quantitative relationships between MEASURABLE VARIABLES from climate science research.
+
+Your task is to analyze the following scientific text and identify relationships between measurable variables/parameters.
+
+TEXT:
+{text}
+
+VARIABLE PAIRS:
+{', '.join([f'("{a}", "{b}")' for a, b in keyword_pairs])}
+
+INSTRUCTIONS:
+
+1. Output format:
+   (VARIABLE_1, RELATION, VARIABLE_2)
+
+2. Focus on CAUSAL and QUANTITATIVE relationships:
+   - INCREASES, DECREASES, CORRELATES_WITH, CAUSES, INHIBITS
+   - MODULATES, DRIVES, REGULATES, DEPENDS_ON, INFLUENCES
+   - MEASURED_WITH, PROPORTIONAL_TO, INVERSELY_RELATED
+
+3. Only use the provided variables exactly as they appear.
+
+4. RELATION format: UPPERCASE with underscores (no spaces)
+
+5. Only output relationships that describe how one variable affects or relates to another quantitatively.
+
+6. If no clear quantitative/causal relation exists, do not output that pair.
+
+7. Do NOT include explanations, summaries, or extra commentary.
+
+EXAMPLE OUTPUT:
+(temperature, INCREASES, ice melt)
+(salinity, CORRELATES_WITH, density)
+
+Now return one relation per line in this exact format:
+(VARIABLE_1, RELATION, VARIABLE_2)
+"""
+    else:
+        # Original prompt for general keyword relations
+        prompt = f"""
 You are an expert assistant trained to extract semantic relationships from Arctic and climate science research papers.
 
 Your task is to analyze the following scientific text and infer meaningful relationships between each keyword pair listed below.
@@ -428,11 +513,7 @@ INSTRUCTIONS:
 
 5. If no clear relation is found, use: RELATED_TO
 
-6. Do NOT include explanations, summaries, or extra commentary.
-7. If any output line contains keywords that are NOT from the provided list, discard that line.
-
-8. Do NOT include notes, summaries, explanations, or invented phrases. Output ONLY relation triples.
-
+6. Do NOT include notes, summaries, explanations, or invented phrases. Output ONLY relation triples.
 
 EXAMPLE OUTPUT:
 (wave height, MEASURED_BY, altimeter)
@@ -441,8 +522,9 @@ EXAMPLE OUTPUT:
 Now return one relation per line in this exact format:
 (KEYWORD_1, RELATION, KEYWORD_2)
 """
+    
     # Call Ollama
-    response = ollama.chat(model="llama3", messages=[{"role": "user", "content": prompt}])
+    response = ollama.chat(model="mistral", messages=[{"role": "user", "content": prompt}])
     content = response['message']['content']
 
     # Extract relations using regex
@@ -487,7 +569,7 @@ def extract_dataset_info(text):
     """
     # Take more text for better dataset detection
     text_sample = text[:12000] if len(text) > 12000 else text
-    
+
     prompt = f"""
 You are an expert at extracting dataset information from scientific research papers.
 
@@ -530,22 +612,22 @@ Important:
 - Keep responses concise and factual
 - If information is not found, use "Not specified"
 """
-    
+
     try:
         # Call Ollama
-        response = ollama.chat(model="llama3", messages=[{"role": "user", "content": prompt}])
+        response = ollama.chat(model="mistral", messages=[{"role": "user", "content": prompt}])
         content = response['message']['content']
-        
+
         # Try to parse JSON from response
         import json
         # Find JSON object in response (sometimes LLMs add text around JSON)
         start_idx = content.find('{')
         end_idx = content.rfind('}') + 1
-        
+
         if start_idx != -1 and end_idx > start_idx:
             json_str = content[start_idx:end_idx]
             dataset_info = json.loads(json_str)
-            
+
             # Ensure all required fields exist
             if 'source' not in dataset_info:
                 dataset_info['source'] = 'Not specified'
@@ -555,56 +637,472 @@ Important:
                 dataset_info['time_period'] = 'Not specified'
             if 'location' not in dataset_info:
                 dataset_info['location'] = 'Not specified'
-                
+
             # Ensure variables is a list
             if not isinstance(dataset_info['variables'], list):
                 dataset_info['variables'] = [dataset_info['variables']]
-                
+
             print(f"Dataset extracted: {dataset_info['source']}")
             return dataset_info
         else:
             raise ValueError("No JSON found in response")
-            
+
     except Exception as e:
         print(f"Error extracting dataset info: {e}")
         # Return default structure if extraction fails
         return {
             "source": "Not specified",
             "variables": [],
-            "time_period": "Not specified", 
+            "time_period": "Not specified",
+            "location": "Not specified"
+        }
+
+
+def deduplicate_datasets(datasets):
+    """
+    Merge datasets with same source name, combining metadata intelligently.
+
+    Example:
+        Input (from 3 chunks):
+            [
+                {'source': 'NSIDC', 'variables': ['temperature'], 'time_period': '2010', 'location': 'Arctic'},
+                {'source': 'nsidc', 'variables': ['salinity'], 'time_period': '2010-2020', 'location': 'Arctic Ocean'},
+                {'source': 'NSIDC', 'variables': ['temperature'], 'time_period': 'Not specified', 'location': 'Arctic'}
+            ]
+
+        Output (1 merged dataset):
+            {
+                'source': 'NSIDC',  # Original case
+                'variables': ['temperature', 'salinity'],  # Combined & deduplicated
+                'time_period': '2010-2020',  # Most detailed (has years, longest)
+                'location': 'Arctic Ocean'  # Longest
+            }
+
+    Strategy:
+    1. Group by normalized source name (case-insensitive)
+    2. Combine all variables (deduplicated)
+    3. Pick best time_period (prefer dates with years, then longest)
+    4. Pick best location (longest description)
+    5. Skip "Not specified" and "Unknown" sources
+
+    Args:
+        datasets: List of dataset dicts from multiple chunks
+
+    Returns:
+        List of merged unique datasets
+    """
+    if not datasets:
+        return []
+
+    # Group by source name (normalized)
+    grouped = {}
+    for ds in datasets:
+        source = ds.get('source', 'Unknown').lower().strip()
+        if source == 'not specified' or source == 'unknown':
+            continue  # Skip entries without real dataset names
+
+        if source not in grouped:
+            grouped[source] = []
+        grouped[source].append(ds)
+
+    # Merge each group
+    merged = []
+    for source, ds_list in grouped.items():
+        # Combine all variables
+        all_vars = []
+        for ds in ds_list:
+            vars_list = ds.get('variables', [])
+            if isinstance(vars_list, list):
+                all_vars.extend(vars_list)
+            elif vars_list:  # Single string
+                all_vars.append(vars_list)
+
+        # Deduplicate variables (case-insensitive)
+        unique_vars = []
+        seen_vars = set()
+        for var in all_vars:
+            var_lower = str(var).lower().strip()
+            if var_lower and var_lower not in seen_vars and var_lower != 'not specified':
+                seen_vars.add(var_lower)
+                unique_vars.append(var)
+
+        # Choose best time_period (prefer structured dates, then longest non-"Not specified")
+        time_periods = [ds.get('time_period', '') for ds in ds_list
+                       if ds.get('time_period') and ds.get('time_period') != 'Not specified']
+        best_time = 'Not specified'
+        if time_periods:
+            # Prefer entries with numbers (years) and longer entries
+            time_periods_scored = [(tp, len(tp), sum(c.isdigit() for c in tp)) for tp in time_periods]
+            best_time = max(time_periods_scored, key=lambda x: (x[2], x[1]))[0]
+
+        # Choose best location (prefer longer, more specific descriptions)
+        locations = [ds.get('location', '') for ds in ds_list
+                    if ds.get('location') and ds.get('location') != 'Not specified']
+        best_location = max(locations, key=len) if locations else 'Not specified'
+
+        # Create merged dataset (use original case from first occurrence)
+        merged.append({
+            'source': ds_list[0].get('source'),  # Original case
+            'variables': unique_vars,
+            'time_period': best_time,
+            'location': best_location
+        })
+
+    return merged
+
+
+def extract_relations_and_dataset_combined(text, keyword_pairs, focus_on_variables=False, llm_model="mistral"):
+    """
+    COMBINED EXTRACTION: Extract both relationships and dataset information in a single LLM call.
+
+    Key Features:
+    - Single LLM call per chunk (optimized performance)
+    - Supports dynamic model selection via llm_model parameter
+    - Extracts dataset ONLY if mentioned in the chunk
+    - Returns "Not specified" if no dataset found
+    - Caller filters out "Not specified" entries
+
+    Returns:
+        tuple: (relations_list, dataset_info_dict)
+            - relations_list: [(head, relation, tail), ...]
+            - dataset_info_dict: {'source': str, 'variables': list, 'time_period': str, 'location': str}
+              (dataset_info_dict['source'] == 'Not specified' if no dataset in chunk)
+    """
+    if focus_on_variables:
+        prompt = f"""
+You are an expert assistant trained to extract TWO types of information from climate science research:
+1. Causal/quantitative relationships between measurable variables
+2. Dataset information (data sources, variables, time periods, locations)
+
+TEXT:
+{text}
+
+VARIABLE PAIRS:
+{', '.join([f'("{a}", "{b}")' for a, b in keyword_pairs])}
+
+TASK 1 - EXTRACT RELATIONSHIPS:
+Output format: (VARIABLE_1, RELATION, VARIABLE_2)
+
+Focus on CAUSAL and QUANTITATIVE relationships:
+- INCREASES, DECREASES, CORRELATES_WITH, CAUSES, INHIBITS
+- MODULATES, DRIVES, REGULATES, DEPENDS_ON, INFLUENCES
+- MEASURED_WITH, PROPORTIONAL_TO, INVERSELY_RELATED
+
+Rules:
+- Only use the provided variables exactly as they appear
+- RELATION format: UPPERCASE with underscores (no spaces)
+- Only output relationships that describe how one variable affects or relates to another quantitatively
+- If no clear quantitative/causal relation exists, do not output that pair
+
+TASK 2 - EXTRACT DATASET INFORMATION:
+Look for mentions of:
+- Data sources (databases, repositories, satellite data, observational data)
+- Dataset names (NSIDC, NOAA, NASA, ERA5, MODIS, etc.)
+- Time periods (years, date ranges)
+- Geographic regions
+- Variables or parameters measured
+
+OUTPUT FORMAT:
+First, output relationships (one per line):
+(temperature, INCREASES, ice_melt)
+(salinity, CORRELATES_WITH, density)
+
+Then output "---DATASET---" as a separator.
+
+Then output ONLY a JSON object:
+{{
+    "source": "dataset name or 'Not specified'",
+    "variables": ["var1", "var2"],
+    "time_period": "time range or 'Not specified'",
+    "location": "geographic area or 'Not specified'"
+}}
+
+Remember:
+- Do NOT include explanations or commentary
+- Relationships first, then separator, then JSON
+- If no dataset found, still output the JSON with "Not specified"
+"""
+    else:
+        prompt = f"""
+You are an expert assistant trained to extract TWO types of information from Arctic and climate science research:
+1. Semantic relationships between keywords
+2. Dataset information (data sources, variables, time periods, locations)
+
+TEXT:
+{text}
+
+KEYWORD PAIRS:
+{', '.join([f'("{a}", "{b}")' for a, b in keyword_pairs])}
+
+TASK 1 - EXTRACT RELATIONSHIPS:
+Output format: (KEYWORD_1, RELATION, KEYWORD_2)
+
+Rules:
+- Only use the provided keywords exactly as they appear
+- RELATION format: UPPERCASE with underscores (no spaces)
+- Use precise domain-specific relations: MEASURED_BY, MODULATES, CAUSED_BY, INTERACTS_WITH, TRACKED_WITH
+- If no clear relation is found, use: RELATED_TO
+
+TASK 2 - EXTRACT DATASET INFORMATION:
+Look for mentions of:
+- Data sources (databases, repositories, satellite data, observational data)
+- Dataset names (NSIDC, NOAA, NASA, ERA5, MODIS, etc.)
+- Time periods (years, date ranges)
+- Geographic regions
+- Variables or parameters measured
+
+OUTPUT FORMAT:
+First, output relationships (one per line):
+(wave height, MEASURED_BY, altimeter)
+(sea ice, INTERACTS_WITH, ocean current)
+
+Then output "---DATASET---" as a separator.
+
+Then output ONLY a JSON object:
+{{
+    "source": "dataset name or 'Not specified'",
+    "variables": ["var1", "var2"],
+    "time_period": "time range or 'Not specified'",
+    "location": "geographic area or 'Not specified'"
+}}
+
+Remember:
+- Do NOT include explanations or commentary
+- Relationships first, then separator, then JSON
+- If no dataset found, still output the JSON with "Not specified"
+"""
+
+    try:
+        # Call Ollama once for both tasks
+        response = ollama.chat(model=llm_model, messages=[{"role": "user", "content": prompt}])
+        content = response['message']['content']
+
+        # Split response into relations and dataset parts
+        separator = "---DATASET---"
+        if separator in content:
+            relations_part, dataset_part = content.split(separator, 1)
+        else:
+            # Fallback: try to find JSON, everything before is relations
+            json_start = content.find('{')
+            if json_start != -1:
+                relations_part = content[:json_start]
+                dataset_part = content[json_start:]
+            else:
+                relations_part = content
+                dataset_part = ""
+
+        # Extract relations using regex
+        extracted_relations = []
+        for line in relations_part.strip().split("\n"):
+            match = re.match(r"\(?([^,]+),\s*([A-Z0-9_]+),\s*([^)]+)\)?", line.strip())
+            if match:
+                head, relation, tail = match.groups()
+                extracted_relations.append((head.strip(), relation.strip(), tail.strip()))
+
+        # Extract dataset info from JSON
+        import json
+        dataset_info = {
+            "source": "Not specified",
+            "variables": [],
+            "time_period": "Not specified",
+            "location": "Not specified"
+        }
+
+        if dataset_part.strip():
+            start_idx = dataset_part.find('{')
+            end_idx = dataset_part.rfind('}') + 1
+
+            if start_idx != -1 and end_idx > start_idx:
+                json_str = dataset_part[start_idx:end_idx]
+                parsed_dataset = json.loads(json_str)
+
+                # Update dataset_info with parsed values
+                if 'source' in parsed_dataset:
+                    dataset_info['source'] = parsed_dataset['source']
+                if 'variables' in parsed_dataset:
+                    dataset_info['variables'] = parsed_dataset['variables'] if isinstance(parsed_dataset['variables'], list) else [parsed_dataset['variables']]
+                if 'time_period' in parsed_dataset:
+                    dataset_info['time_period'] = parsed_dataset['time_period']
+                if 'location' in parsed_dataset:
+                    dataset_info['location'] = parsed_dataset['location']
+
+        return extracted_relations, dataset_info
+
+    except Exception as e:
+        print(f"⚠️ Error in combined extraction: {e}")
+        # Return empty relations and default dataset info on error
+        return [], {
+            "source": "Not specified",
+            "variables": [],
+            "time_period": "Not specified",
             "location": "Not specified"
         }
 
 
 
-def process(file_path, k):
+def process(file_path, k, filter_variables=True, llm_model="mistral", use_gpt4_datasets=False):
+    """
+    Process PDF to extract keywords, relations, and datasets.
+
+    Args:
+        file_path: Path to PDF file
+        k: Number of keywords to extract
+        filter_variables: If True, filter keywords to climate variables only
+        llm_model: Ollama model to use for relation extraction (e.g., "mistral", "llama3:latest")
+        use_gpt4_datasets: If True, use GPT-4 for dataset extraction (more accurate, costs ~$0.02/paper)
+                          If False, use local llama3.2 model (free, lower accuracy)
+
+    Returns:
+        tuple: (nodes, edges, datasets, keywords_metadata)
+            - nodes: List of keyword nodes
+            - edges: List of relationship edges
+            - datasets: List of dataset dicts with PRIMARY/CITED labels
+            - keywords_metadata: Metadata about keyword extraction
+    """
+    print(f"Using LLM model: {llm_model}")
     model = SentenceTransformer("all-MiniLM-L6-v2")
 
     input_text = text_extraction(file_path)
     print('Input text checking:', input_text[:3000])
 
     # Step 0: Extract keywords
-    keywords = extract_keywords(input_text, k)
-    print(f"\nExtracted Keywords are: {keywords}")
+    keywords_result = extract_keywords(input_text, k)
     
-    # Extract dataset information
-    dataset_info = extract_dataset_info(input_text)
-    print(f"\nExtracted Dataset Info: {dataset_info}")
+    # Handle both old format (list) and new format (dict with metadata)
+    if isinstance(keywords_result, dict):
+        keywords = keywords_result['keywords']
+        keywords_metadata = keywords_result
+        # Log if Keywords section was found
+        if keywords_result.get('from_keywords_section'):
+            print(f"✅ Keywords section found! Extracted {keywords_result['total_found']} keywords from Keywords section")
+        else:
+            print(f"ℹ️ No Keywords section found. Using {keywords_result.get('method', 'algorithmic extraction')}")
+    else:
+        # Backward compatibility - in case old format is still returned somehow
+        keywords = keywords_result
+        keywords_metadata = None
+    
+    print(f"\nExtracted Keywords are: {keywords}")
 
+    # Step 0.5: Filter for variables only (if enabled)
+    original_keywords = keywords.copy()
+    if filter_variables:
+        from variable_filter import VariableFilter
+        vf = VariableFilter()
+        
+        # Filter keywords to get only variables
+        filtered_result = vf.filter_variables(keywords)
+        variables = filtered_result['variables']
+        non_variables = filtered_result['non_variables']
+        
+        print(f"\n🔬 Variable Filtering Applied:")
+        print(f"   Original keywords: {len(keywords)}")
+        print(f"   Variables identified: {len(variables)}")
+        print(f"   Non-variables removed: {len(non_variables)}")
+        
+        if variables:
+            print(f"   Variables kept: {', '.join(variables[:10])}{' ...' if len(variables) > 10 else ''}")
+        if non_variables:
+            print(f"   Removed: {', '.join(non_variables[:10])}{' ...' if len(non_variables) > 10 else ''}")
+        
+        # Use only variables for relation extraction
+        keywords = variables
+        
+        # If no variables found, fall back to original keywords
+        if not keywords:
+            print("   ⚠️ No variables identified! Using original keywords.")
+            keywords = original_keywords
+            filter_variables = False  # Disable filtering for edges later
+    
     # Normalize for consistency
     filtered_candidates = [kw.lower().strip() for kw in keywords]
-    print(f"\nFiltered Keywords: {filtered_candidates}")
+    print(f"\nKeywords for relation extraction: {filtered_candidates}")
 
     # Step 1: Chunk the text
     chunks = text_chunks(input_text)
 
-    # Step 2: Use LLaMA to generate relations from each chunk
+    # Step 2: Dataset Extraction - GPT-4 or Local LLM (PLUGGABLE)
+    # ================================================================
+    # This section is designed to be easily switched on/off
+    # ================================================================
+    extraction_stats = {'total_cost': 0.0, 'processing_time': 0.0, 'method': 'local'}
+
+    if use_gpt4_datasets:
+        # === GPT-4 DATASET EXTRACTION (PLUGIN) ===
+        print(f"\n{'='*80}")
+        print(f"🤖 GPT-4 DATASET EXTRACTION ENABLED")
+        print(f"{'='*80}")
+
+        try:
+            from dataset_extraction_gpt4 import GPT4DatasetExtractor
+
+            extractor = GPT4DatasetExtractor()
+            gpt4_datasets, stats = extractor.extract_from_full_text(input_text, verbose=True)
+
+            # Convert GPT-4 dataclass objects to dict format
+            all_datasets = []
+            for ds in gpt4_datasets:
+                dataset_dict = {
+                    'source': ds.source,
+                    'variables': ds.variables,
+                    'time_period': ds.time_period,
+                    'location': ds.location,
+                    'dataset_type': ds.dataset_type,  # 'primary' or 'cited'
+                    'usage_description': ds.usage_description,
+                    'confidence': ds.confidence_score,
+                    'citation_info': ds.citation_info,
+                    'context': ds.context
+                }
+                all_datasets.append(dataset_dict)
+
+            # Store extraction stats
+            extraction_stats = {
+                'total_cost': stats.get('total_cost', 0.0),
+                'processing_time': stats.get('processing_time', 0.0),
+                'method': 'gpt4',
+                'datasets_found': len(all_datasets),
+                'primary_count': sum(1 for d in all_datasets if d['dataset_type'] == 'primary'),
+                'cited_count': sum(1 for d in all_datasets if d['dataset_type'] == 'cited')
+            }
+
+            # Display summary
+            print(f"\n✅ GPT-4 Extraction Complete:")
+            print(f"   📊 Total datasets: {extraction_stats['datasets_found']}")
+            print(f"   🟢 PRIMARY: {extraction_stats['primary_count']}")
+            print(f"   🔵 CITED: {extraction_stats['cited_count']}")
+            print(f"   💰 Cost: ${extraction_stats['total_cost']:.4f}")
+            print(f"   ⏱️  Time: {extraction_stats['processing_time']:.1f}s")
+
+            # Skip per-chunk llama3.2 extraction since we have GPT-4 results
+            unique_datasets = all_datasets
+
+        except ImportError as e:
+            print(f"\n⚠️  GPT-4 extractor not available: {e}")
+            print(f"   Falling back to local LLM extraction...")
+            use_gpt4_datasets = False  # Fallback to local
+        except Exception as e:
+            print(f"\n⚠️  GPT-4 extraction failed: {e}")
+            print(f"   Falling back to local LLM extraction...")
+            use_gpt4_datasets = False  # Fallback to local
+
+    # Step 2.5: Use combined extraction to get relations AND datasets from each chunk
     total_relations = []
+
+    if not use_gpt4_datasets:
+        # === LOCAL LLM DATASET EXTRACTION (DEFAULT) ===
+        all_datasets = []  # Track datasets per chunk
+
     valid_keywords = set(filtered_candidates)
 
-    for c in chunks:
+    print(f"\n🔄 Processing {len(chunks)} chunks with COMBINED extraction (relations + datasets)...")
+
+    for idx, c in enumerate(chunks):
         keyword_pairs = extract_all_keyword_pairs(filtered_candidates)
-        extracted = extract_relations_llama_all(c, keyword_pairs)
+
+        # NEW: Use combined extraction (single LLM call for both tasks)
+        extracted, chunk_dataset = extract_relations_and_dataset_combined(
+            c, keyword_pairs, focus_on_variables=filter_variables, llm_model=llm_model
+        )
 
         # Filter hallucinated or off-topic relations
         filtered_relations = [
@@ -613,6 +1111,15 @@ def process(file_path, k):
             if h.lower().strip() in valid_keywords and t.lower().strip() in valid_keywords
         ]
         total_relations.extend(filtered_relations)
+
+        # Collect dataset if found in this chunk (only if using local LLM)
+        if not use_gpt4_datasets and chunk_dataset['source'] != 'Not specified':
+            all_datasets.append(chunk_dataset)
+            print(f"  ✅ Chunk {idx+1}/{len(chunks)}: Found dataset '{chunk_dataset['source']}'")
+
+        # Progress indicator every 10 chunks
+        if (idx + 1) % 10 == 0:
+            print(f"  📊 Processed {idx+1}/{len(chunks)} chunks...")
 
     # Step 3: Score relations
     scored = confidence_scores(total_relations, model)
@@ -630,6 +1137,41 @@ def process(file_path, k):
         print(f"   - Cosine Similarity Score: {cos}")
         print(f"   - Hybrid Score           : {hybrid}\n")
 
+    # Deduplicate datasets (only if using local LLM, GPT-4 already handles this)
+    if not use_gpt4_datasets:
+        print(f"\n📊 Dataset Extraction Summary (Local LLM):")
+        print(f"   Total dataset mentions found: {len(all_datasets)}")
+
+        unique_datasets = deduplicate_datasets(all_datasets)
+        print(f"   Unique datasets after deduplication: {len(unique_datasets)}")
+
+        # Add dataset_type field for local LLM results (backward compatibility)
+        for ds in unique_datasets:
+            if 'dataset_type' not in ds:
+                ds['dataset_type'] = 'cited'  # Default to cited for local LLM
+            if 'usage_description' not in ds:
+                ds['usage_description'] = ''
+            if 'confidence' not in ds:
+                ds['confidence'] = 0.5
+            if 'citation_info' not in ds:
+                ds['citation_info'] = None
+            if 'context' not in ds:
+                ds['context'] = ''
+    # If GPT-4 was used, unique_datasets is already set above
+
+    if unique_datasets:
+        print(f"\n   📚 Datasets identified:")
+        for ds in unique_datasets:
+            print(f"      - {ds['source']}")
+            if ds['variables']:
+                print(f"        Variables: {', '.join(ds['variables'][:5])}{' ...' if len(ds['variables']) > 5 else ''}")
+            if ds['time_period'] != 'Not specified':
+                print(f"        Time period: {ds['time_period']}")
+            if ds['location'] != 'Not specified':
+                print(f"        Location: {ds['location']}")
+    else:
+        print(f"   ⚠️ No datasets found in this paper")
+
     # Step 4: Prepare top relations for Neo4j
     top_scored_relations = sorted(scored, key=lambda x: -x[3])[:100]
 
@@ -646,4 +1188,17 @@ def process(file_path, k):
             "score": score
         })
 
-    return list(neo4j_nodes), neo4j_edges, dataset_info
+    # Include filtering info in keywords_metadata if filtering was applied
+    if filter_variables and keywords_metadata:
+        keywords_metadata['filtering_applied'] = True
+        keywords_metadata['original_keywords'] = original_keywords
+        keywords_metadata['filtered_keywords'] = keywords
+        keywords_metadata['removed_keywords'] = list(set(original_keywords) - set(keywords))
+    elif keywords_metadata:
+        keywords_metadata['filtering_applied'] = False
+
+    # Add extraction stats to keywords_metadata
+    keywords_metadata['extraction_stats'] = extraction_stats
+
+    # Return: nodes, edges, datasets, metadata (with extraction stats)
+    return list(neo4j_nodes), neo4j_edges, unique_datasets, keywords_metadata
