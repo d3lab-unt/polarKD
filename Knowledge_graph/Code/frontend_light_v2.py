@@ -22,7 +22,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# ─── LUXURY EDITORIAL CSS ────────────────────────────────────────────────────
+# ─── EDITORIAL CSS ────────────────────────────────────────────────────
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=DM+Sans:wght@300;400;500&display=swap');
@@ -769,34 +769,11 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ─── LOGO LOADING ──────────────────────────────────────────────────────────
-# iHARP logo
-logo_data = None
-logo_type = None
-logo_path = os.path.join(os.path.dirname(__file__), "..", "iharp-logo.jpg")
-if os.path.exists(logo_path):
-    with open(logo_path, "rb") as f:
-        logo_data = base64.b64encode(f.read()).decode()
-    logo_type = "jpeg"
-else:
-    logo_path = os.path.join(os.path.dirname(__file__), "..", "iharp_logo.png")
-    if os.path.exists(logo_path):
-        with open(logo_path, "rb") as f:
-            logo_data = base64.b64encode(f.read()).decode()
-        logo_type = "png"
 
-# UNT logo — tries project folder first, then desktop path as fallback
-unt_logo_data = None
-unt_logo_paths = [
-    os.path.join(os.path.dirname(__file__), "..", "unt-logo.png"),
-    os.path.join(os.path.dirname(__file__), "unt-logo.png"),
-    r"C:\Users\aeswa\OneDrive\Desktop\university-of-north-texas-vector-logo-seeklogo\university-of-north-texas-seeklogo.png",
-]
-for unt_path in unt_logo_paths:
-    if os.path.exists(unt_path):
-        with open(unt_path, "rb") as f:
-            unt_logo_data = base64.b64encode(f.read()).decode()
-        break
+# ─── LOGO LOADING (GitHub raw URLs) ────────────────────────────────────────
+IHARP_LOGO_URL = "https://raw.githubusercontent.com/d3lab-unt/polarKD/main/Knowledge_graph/images/iharp%20logo.png"
+UNT_LOGO_URL   = "https://raw.githubusercontent.com/d3lab-unt/polarKD/main/Knowledge_graph/images/university-of-north-texas-seeklogo.png"
+
 
 # ─── SESSION STATE ─────────────────────────────────────────────────────────
 for key, default in [
@@ -812,21 +789,17 @@ for key, default in [
         st.session_state[key] = default
 
 # ─── HERO ──────────────────────────────────────────────────────────────────
-iharp_logo_html = ""
-if logo_data and logo_type:
-    iharp_logo_html = f'<img src="data:image/{logo_type};base64,{logo_data}" style="height:48px;width:auto;margin-bottom:2rem;opacity:0.9;" alt="iHARP Logo">'
+iharp_logo_html = f'<img src="{IHARP_LOGO_URL}" style="height:48px;width:auto;margin-bottom:2rem;opacity:0.9;" alt="iHARP Logo">'
 
-unt_logo_html = ""
-if unt_logo_data:
-    unt_logo_html = (
-        '<div style="position:absolute;top:1.5rem;right:2rem;'
-        'background:white;border-radius:50%;padding:6px;'
-        'box-shadow:0 2px 12px rgba(0,0,0,0.2);'
-        'display:flex;align-items:center;justify-content:center;">'
-        f'<img src="data:image/png;base64,{unt_logo_data}" '
-        'style="height:80px;width:80px;object-fit:contain;border-radius:50%;" alt="UNT Logo">'
-        '</div>'
-    )
+unt_logo_html = (
+    '<div style="position:absolute;top:1.5rem;right:2rem;'
+    'background:white;border-radius:50%;padding:6px;'
+    'box-shadow:0 2px 12px rgba(0,0,0,0.2);'
+    'display:flex;align-items:center;justify-content:center;">'
+    f'<img src="{UNT_LOGO_URL}" '
+    'style="height:80px;width:80px;object-fit:contain;border-radius:50%;" alt="UNT Logo">'
+    '</div>'
+)
 
 hero_html = (
     '<div class="polar-hero">'
@@ -836,31 +809,37 @@ hero_html = (
     + '<div class="hero-title">Polar <em>Knowledge</em><br>Discovery Toolkit</div>'
     + '<div class="hero-subtitle">Extract climate variables, build semantic knowledge graphs, and interrogate polar science literature — all within a single intelligent workspace.</div>'
     + '<div class="hero-meta">'
-    + '<div class="hero-stat"><div class="hero-stat-num">PDF</div><div class="hero-stat-label">Ingestion</div></div>'
+    + '<a href="#section-upload" style="text-decoration:none;">'
+    +   '<div class="hero-stat" style="cursor:pointer;" onmouseover="this.style.opacity=\'0.7\'" onmouseout="this.style.opacity=\'1\'">'
+    +     '<div class="hero-stat-num">PDF</div>'
+    +     '<div class="hero-stat-label">Ingestion</div>'
+    +   '</div>'
+    + '</a>'
     + '<div class="hero-divider"></div>'
-    + '<div class="hero-stat"><div class="hero-stat-num">NLP</div><div class="hero-stat-label">Extraction</div></div>'
+    + '<a href="#section-qa" style="text-decoration:none;">'
+    +   '<div class="hero-stat" style="cursor:pointer;" onmouseover="this.style.opacity=\'0.7\'" onmouseout="this.style.opacity=\'1\'">'
+    +     '<div class="hero-stat-num">Q&amp;A</div>'
+    +     '<div class="hero-stat-label">Document QA</div>'
+    +   '</div>'
+    + '</a>'
     + '<div class="hero-divider"></div>'
-    + '<div class="hero-stat"><div class="hero-stat-num">KG</div><div class="hero-stat-label">Knowledge Graph</div></div>'
-    + '<div class="hero-divider"></div>'
-    + '<div class="hero-stat"><div class="hero-stat-num">Q&amp;A</div><div class="hero-stat-label">Document QA</div></div>'
+    + '<a href="#section-kg" style="text-decoration:none;">'
+    +   '<div class="hero-stat" style="cursor:pointer;" onmouseover="this.style.opacity=\'0.7\'" onmouseout="this.style.opacity=\'1\'">'
+    +     '<div class="hero-stat-num">KG</div>'
+    +     '<div class="hero-stat-label">Knowledge Graph</div>'
+    +   '</div>'
+    + '</a>'
     + '</div>'
     + '</div>'
 )
 st.markdown(hero_html, unsafe_allow_html=True)
 
-# ─── NAV ───────────────────────────────────────────────────────────────────
-nav_html = (
-    '<div class="polar-nav">'
-    + '<span class="polar-nav-pill active">&#8593; Upload PDFs</span>'
-    + '<span class="polar-nav-pill">&#8596; Q&amp;A</span>'
-    + '<span class="polar-nav-pill">&#9711; Knowledge Graph</span>'
-    + '</div>'
-)
-st.markdown(nav_html, unsafe_allow_html=True)
+
 
 # ══════════════════════════════════════════════════════════════════════════
 #  SECTION 1 — UPLOAD
 # ══════════════════════════════════════════════════════════════════════════
+st.markdown('<div id="section-upload"></div>', unsafe_allow_html=True)
 st.markdown('<span class="section-label">Step 01</span>', unsafe_allow_html=True)
 st.markdown('<div class="section-heading">Upload <em>Documents</em></div>', unsafe_allow_html=True)
 
@@ -882,26 +861,17 @@ with col1:
             st.markdown(f'<div class="doc-item">{i}. {file.name} &nbsp;·&nbsp; {file.size // 1024} KB</div>', unsafe_allow_html=True)
     else:
         st.markdown('<div style="margin-top:0.5rem;padding:0.75rem 1rem;background:#FFFFFF;border-radius:4px;border:1px solid rgba(13,35,71,0.08);font-size:0.8rem;color:#5F7A9D;">No files selected yet — drag PDFs above or click to browse.</div>', unsafe_allow_html=True)
-
-with col2:
+with col1:
     st.markdown('<span class="section-label">Configuration</span>', unsafe_allow_html=True)
-
-    st.markdown(
-        '<div class="polar-info-row">📚 <strong>Send to Q&amp;A</strong> — Prepare documents for retrieval-based question answering</div>'
-        '<div class="polar-info-row">&#9711; <strong>Generate Knowledge Graph</strong> — Extract variables &amp; build a semantic graph</div>',
-        unsafe_allow_html=True
-    )
-
     k = st.slider("Keywords to Extract (Knowledge Graph)", min_value=5, max_value=50, value=15, step=5)
-
     use_gpt4_datasets = display_gpt4_toggle()
-
     filter_variables = st.checkbox(
         "Filter to Climate Variables Only",
         value=True,
         help="Retain only measurable variables (temperature, salinity, pressure…). Removes organisations, locations, methods."
     )
 
+with col2:
     # ── Dialog states
     if 'show_qa_dialog' not in st.session_state:
         st.session_state.show_qa_dialog = False
@@ -916,45 +886,63 @@ with col2:
         else:
             st.warning("Please upload files first.")
 
-    # ── Q&A Dialog
+    # ── Q&A inline card
     if st.session_state.show_qa_dialog:
-        with st.container():
-            st.markdown("<hr class='inner-rule'>", unsafe_allow_html=True)
-            st.markdown('<span class="section-label">Q&A Configuration</span>', unsafe_allow_html=True)
-            qa_model = st.selectbox(
-                "Select LLM Model",
-                options=["llama3", "mistral:7b", "llama3:latest", "gemma3:12b"],
-                index=0,
-                key="qa_model_dialog",
-                help="Ollama model for answering questions."
-            )
-            col_confirm, col_cancel = st.columns(2)
-            with col_confirm:
-                if st.button("✓ Confirm", use_container_width=True, key="qa_confirm"):
-                    st.session_state.show_qa_dialog = False
-                    qa_system.set_model(qa_model)
-                    st.info(f"Model: **{qa_model}**")
-                    with st.spinner("Indexing documents…"):
-                        added_count = 0
-                        for file in uploaded_files:
-                            if file.name not in st.session_state.databases:
-                                file.seek(0)
-                                temp_path = f"temp_qa_{file.name}"
-                                with open(temp_path, "wb") as f:
-                                    f.write(file.read())
-                                if qa_system.add_document(file.name, pdf_path=temp_path):
-                                    st.session_state.databases.append(file.name)
-                                    added_count += 1
-                                if os.path.exists(temp_path):
-                                    os.remove(temp_path)
-                        if added_count > 0:
-                            st.success(f"✓ {added_count} file(s) indexed.")
-                        else:
-                            st.info("Files already indexed.")
-            with col_cancel:
-                if st.button("✕ Cancel", use_container_width=True, key="qa_cancel"):
-                    st.session_state.show_qa_dialog = False
-                    st.rerun()
+        st.markdown("""
+        <div style="
+            background:#F0F6FF;
+            border:1.5px solid #4A9FD4;
+            border-left:4px solid #4A9FD4;
+            border-radius:6px;
+            padding:1.25rem 1.5rem 0.75rem 1.5rem;
+            margin-top:0.5rem;
+            margin-bottom:0.25rem;
+        ">
+            <div style="font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:600;color:#0D2347;margin-bottom:0.2rem;">
+                📚 Send to Q&amp;A
+            </div>
+            <div style="font-size:0.76rem;color:#5F7A9D;letter-spacing:0.04em;">
+                Select the LLM model to use for answering questions
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        qa_model = st.selectbox(
+            "LLM Model",
+            options=["llama3", "mistral:7b", "llama3:latest", "gemma3:12b"],
+            index=0,
+            key="qa_model_dialog",
+            help="Ollama model for answering questions."
+        )
+        col_confirm, col_cancel = st.columns(2)
+        with col_confirm:
+            if st.button("✓ Confirm", use_container_width=True, key="qa_confirm"):
+                st.session_state.show_qa_dialog = False
+                qa_system.set_model(qa_model)
+                st.info(f"Model: **{qa_model}**")
+                with st.spinner("Indexing documents…"):
+                    added_count = 0
+                    for file in uploaded_files:
+                        if file.name not in st.session_state.databases:
+                            file.seek(0)
+                            temp_path = f"temp_qa_{file.name}"
+                            with open(temp_path, "wb") as f:
+                                f.write(file.read())
+                            if qa_system.add_document(file.name, pdf_path=temp_path):
+                                st.session_state.databases.append(file.name)
+                                added_count += 1
+                            if os.path.exists(temp_path):
+                                os.remove(temp_path)
+                    if added_count > 0:
+                        st.success(f"✓ {added_count} file(s) indexed.")
+                    else:
+                        st.info("Files already indexed.")
+        with col_cancel:
+            if st.button("✕ Cancel", use_container_width=True, key="qa_cancel"):
+                st.session_state.show_qa_dialog = False
+                st.rerun()
+
+    st.markdown("<div style='margin-top:1rem;'></div>", unsafe_allow_html=True)
 
     # ── KG Button
     if st.button("◎ Generate Knowledge Graph", use_container_width=True, key="gen_kg"):
@@ -964,34 +952,187 @@ with col2:
         else:
             st.warning("Please upload files first.")
 
-    # ── KG Dialog
+    # ── KG inline card
     if st.session_state.show_kg_dialog:
-        with st.container():
-            st.markdown("<hr class='inner-rule'>", unsafe_allow_html=True)
-            st.markdown('<span class="section-label">Knowledge Graph Configuration</span>', unsafe_allow_html=True)
-            kg_model = st.selectbox(
-                "Select LLM Model for Relation Extraction",
-                options=["llama3", "mistral:7b", "llama3:latest", "gemma3:12b"],
-                index=0,
-                key="kg_model_dialog",
-            )
-            kg_graph_type = st.selectbox(
-                "Graph Visualization Type",
-                options=["Full Graph (with Datasets)", "Knowledge Graph Only (without Datasets)"],
-                index=0,
-                key="kg_graph_type_dialog",
-            )
-            col_confirm, col_cancel = st.columns(2)
-            with col_confirm:
-                if st.button("✓ Confirm", use_container_width=True, key="kg_confirm"):
-                    st.session_state.show_kg_dialog = False
-                    st.session_state.kg_model_selected = kg_model
-                    st.session_state.kg_graph_type_selected = kg_graph_type
-                    st.rerun()
-            with col_cancel:
-                if st.button("✕ Cancel", use_container_width=True, key="kg_cancel"):
-                    st.session_state.show_kg_dialog = False
-                    st.rerun()
+        st.markdown("""
+        <div style="
+            background:#F0F6FF;
+            border:1.5px solid #4A9FD4;
+            border-left:4px solid #4A9FD4;
+            border-radius:6px;
+            padding:1.25rem 1.5rem 0.75rem 1.5rem;
+            margin-top:0.5rem;
+            margin-bottom:0.25rem;
+        ">
+            <div style="font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:600;color:#0D2347;margin-bottom:0.2rem;">
+                ◎ Knowledge Graph Configuration
+            </div>
+            <div style="font-size:0.76rem;color:#5F7A9D;letter-spacing:0.04em;">
+                Choose model and graph type before generating
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        kg_model = st.selectbox(
+            "LLM Model for Relation Extraction",
+            options=["llama3", "mistral:7b", "llama3:latest", "gemma3:12b"],
+            index=0,
+            key="kg_model_dialog",
+        )
+        kg_graph_type = st.selectbox(
+            "Graph Visualization Type",
+            options=["Full Graph (with Datasets)", "Knowledge Graph Only (without Datasets)"],
+            index=0,
+            key="kg_graph_type_dialog",
+        )
+        col_confirm, col_cancel = st.columns(2)
+        with col_confirm:
+            if st.button("✓ Confirm", use_container_width=True, key="kg_confirm"):
+                st.session_state.show_kg_dialog = False
+                st.session_state.kg_model_selected = kg_model
+                st.session_state.kg_graph_type_selected = kg_graph_type
+                st.rerun()
+        with col_cancel:
+            if st.button("✕ Cancel", use_container_width=True, key="kg_cancel"):
+                st.session_state.show_kg_dialog = False
+                st.rerun()
+# with col2:
+#     st.markdown('<span class="section-label">Configuration</span>', unsafe_allow_html=True)
+
+#     k = st.slider("Keywords to Extract (Knowledge Graph)", min_value=5, max_value=50, value=15, step=5)
+
+#     use_gpt4_datasets = display_gpt4_toggle()
+
+#     filter_variables = st.checkbox(
+#         "Filter to Climate Variables Only",
+#         value=True,
+#         help="Retain only measurable variables (temperature, salinity, pressure…). Removes organisations, locations, methods."
+#     )
+
+#     # ── Dialog states
+#     if 'show_qa_dialog' not in st.session_state:
+#         st.session_state.show_qa_dialog = False
+#     if 'show_kg_dialog' not in st.session_state:
+#         st.session_state.show_kg_dialog = False
+
+#     # ── Q&A Button
+#     if st.button("📚 Send to Q&A", use_container_width=True, key="send_qa"):
+#         if uploaded_files and len(uploaded_files) > 0:
+#             st.session_state.show_qa_dialog = True
+#             st.session_state.show_kg_dialog = False
+#         else:
+#             st.warning("Please upload files first.")
+
+#     # ── Q&A inline card
+#     if st.session_state.show_qa_dialog:
+#         st.markdown("""
+#         <div style="
+#             background:#F0F6FF;
+#             border:1.5px solid #4A9FD4;
+#             border-left:4px solid #4A9FD4;
+#             border-radius:6px;
+#             padding:1.25rem 1.5rem 0.75rem 1.5rem;
+#             margin-top:0.5rem;
+#             margin-bottom:0.25rem;
+#         ">
+#             <div style="font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:600;color:#0D2347;margin-bottom:0.2rem;">
+#                 📚 Send to Q&amp;A
+#             </div>
+#             <div style="font-size:0.76rem;color:#5F7A9D;letter-spacing:0.04em;">
+#                 Select the LLM model to use for answering questions
+#             </div>
+#         </div>
+#         """, unsafe_allow_html=True)
+
+#         qa_model = st.selectbox(
+#             "LLM Model",
+#             options=["llama3", "mistral:7b", "llama3:latest", "gemma3:12b"],
+#             index=0,
+#             key="qa_model_dialog",
+#             help="Ollama model for answering questions."
+#         )
+#         col_confirm, col_cancel = st.columns(2)
+#         with col_confirm:
+#             if st.button("✓ Confirm", use_container_width=True, key="qa_confirm"):
+#                 st.session_state.show_qa_dialog = False
+#                 qa_system.set_model(qa_model)
+#                 st.info(f"Model: **{qa_model}**")
+#                 with st.spinner("Indexing documents…"):
+#                     added_count = 0
+#                     for file in uploaded_files:
+#                         if file.name not in st.session_state.databases:
+#                             file.seek(0)
+#                             temp_path = f"temp_qa_{file.name}"
+#                             with open(temp_path, "wb") as f:
+#                                 f.write(file.read())
+#                             if qa_system.add_document(file.name, pdf_path=temp_path):
+#                                 st.session_state.databases.append(file.name)
+#                                 added_count += 1
+#                             if os.path.exists(temp_path):
+#                                 os.remove(temp_path)
+#                     if added_count > 0:
+#                         st.success(f"✓ {added_count} file(s) indexed.")
+#                     else:
+#                         st.info("Files already indexed.")
+#         with col_cancel:
+#             if st.button("✕ Cancel", use_container_width=True, key="qa_cancel"):
+#                 st.session_state.show_qa_dialog = False
+    #             st.rerun()
+    
+    # # ── KG Button
+    # if st.button("◎ Generate Knowledge Graph", use_container_width=True, key="gen_kg"):
+    #     if uploaded_files and len(uploaded_files) > 0:
+    #         st.session_state.show_kg_dialog = True
+    #         st.session_state.show_qa_dialog = False
+    #     else:
+    #         st.warning("Please upload files first.")
+
+    # # ── KG Dialog
+    # # ── KG inline card
+    # if st.session_state.show_kg_dialog:
+    #     st.markdown("""
+    #     <div style="
+    #         background:#F0F6FF;
+    #         border:1.5px solid #4A9FD4;
+    #         border-left:4px solid #4A9FD4;
+    #         border-radius:6px;
+    #         padding:1.25rem 1.5rem 0.75rem 1.5rem;
+    #         margin-top:0.5rem;
+    #         margin-bottom:0.25rem;
+    #     ">
+    #         <div style="font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:600;color:#0D2347;margin-bottom:0.2rem;">
+    #             ◎ Knowledge Graph Configuration
+    #         </div>
+    #         <div style="font-size:0.76rem;color:#5F7A9D;letter-spacing:0.04em;">
+    #             Choose model and graph type before generating
+    #         </div>
+    #     </div>
+    #     """, unsafe_allow_html=True)
+
+    #     kg_model = st.selectbox(
+    #         "LLM Model for Relation Extraction",
+    #         options=["llama3", "mistral:7b", "llama3:latest", "gemma3:12b"],
+    #         index=0,
+    #         key="kg_model_dialog",
+    #     )
+    #     kg_graph_type = st.selectbox(
+    #         "Graph Visualization Type",
+    #         options=["Full Graph (with Datasets)", "Knowledge Graph Only (without Datasets)"],
+    #         index=0,
+    #         key="kg_graph_type_dialog",
+    #     )
+    #     col_confirm, col_cancel = st.columns(2)
+    #     with col_confirm:
+    #         if st.button("✓ Confirm", use_container_width=True, key="kg_confirm"):
+    #             st.session_state.show_kg_dialog = False
+    #             st.session_state.kg_model_selected = kg_model
+    #             st.session_state.kg_graph_type_selected = kg_graph_type
+    #             st.rerun()
+    #     with col_cancel:
+    #         if st.button("✕ Cancel", use_container_width=True, key="kg_cancel"):
+    #             st.session_state.show_kg_dialog = False
+    #             st.rerun()
+       
 
     # ── KG Processing
     if 'kg_model_selected' in st.session_state and st.session_state.kg_model_selected and uploaded_files and len(uploaded_files) > 0:
@@ -1110,6 +1251,7 @@ with col2:
 #  SECTION 2 — Q&A
 # ══════════════════════════════════════════════════════════════════════════
 st.markdown("---")
+st.markdown('<div id="section-qa"></div>', unsafe_allow_html=True)
 st.markdown('<span class="section-label">Step 02</span>', unsafe_allow_html=True)
 st.markdown('<div class="section-heading">Document <em>Q&A</em></div>', unsafe_allow_html=True)
 
@@ -1175,6 +1317,7 @@ with col2:
 #  SECTION 3 — KNOWLEDGE GRAPH
 # ══════════════════════════════════════════════════════════════════════════
 st.markdown("---")
+st.markdown('<div id="section-kg"></div>', unsafe_allow_html=True)
 st.markdown('<span class="section-label">Step 03</span>', unsafe_allow_html=True)
 st.markdown('<div class="section-heading">Knowledge <em>Graph</em></div>', unsafe_allow_html=True)
 
