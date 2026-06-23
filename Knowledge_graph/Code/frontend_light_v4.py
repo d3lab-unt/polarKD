@@ -9,6 +9,7 @@ from frontend_dataset_display import (
     display_cost_summary,
     export_datasets_to_csv
 )
+from causal_graph import extract_causal_relations, generate_causal_graph
 import os
 import sys
 import re
@@ -42,6 +43,7 @@ except Exception:
     _pangaea_dl = None
     _zenodo_dl = None
     _DOWNLOADERS_AVAILABLE = False
+
 
 _DOWNLOADS_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "downloads"))
 
@@ -238,6 +240,7 @@ def _preview_file(fpath: str, n: int = 10) -> "pd.DataFrame | None":
     except Exception:
         return None
     return None
+
 
 # Page config
 st.set_page_config(
@@ -716,6 +719,33 @@ st.markdown("""
         font-family: 'DM Sans', sans-serif;
     }
 
+    /* ── Causal Tags ── */
+    .causal-cause-tag {
+        display: inline-block;
+        background: #C0392B;
+        color: #F5F8FC !important;
+        padding: 0.3rem 0.85rem;
+        border-radius: 2px;
+        margin: 0.2rem;
+        font-size: 0.72rem;
+        font-weight: 500;
+        letter-spacing: 0.06em;
+        font-family: 'DM Sans', sans-serif;
+    }
+
+    .causal-effect-tag {
+        display: inline-block;
+        background: #E67E22;
+        color: #F5F8FC !important;
+        padding: 0.3rem 0.85rem;
+        border-radius: 2px;
+        margin: 0.2rem;
+        font-size: 0.72rem;
+        font-weight: 500;
+        letter-spacing: 0.06em;
+        font-family: 'DM Sans', sans-serif;
+    }
+
     /* ── Chat ── */
     .chat-bubble-user {
         background: #0D2347;
@@ -1008,6 +1038,8 @@ for key, default in [
     ('current_graph', None),
     ('show_qa_dialog', False),
     ('show_kg_dialog', False),
+    ('show_cg_dialog', False),
+    ('cg_relations', []),
     ('harvester_cache_key', None),
     ('harvester_results', None),
     ('harvester_elapsed', None),
@@ -1034,7 +1066,7 @@ hero_html = (
     + iharp_logo_html
     + '<div class="hero-eyebrow">iHARP Research Initiative</div>'
     + '<div class="hero-title">Polar <em>Knowledge</em><br>Discovery Toolkit</div>'
-    + '<div class="hero-subtitle">Extract climate variables, build semantic knowledge graphs, and interrogate polar science literature — all within a single intelligent workspace.</div>'
+    + '<div class="hero-subtitle">Extract climate variables, build semantic knowledge graphs, discover causal relationships, and interrogate polar science literature — all within a single intelligent workspace.</div>'
     + '<div class="hero-meta">'
     + '<a href="#section-upload" style="text-decoration:none;">'
     +   '<div class="hero-stat" style="cursor:pointer;" onmouseover="this.style.opacity=\'0.7\'" onmouseout="this.style.opacity=\'1\'">'
@@ -1054,6 +1086,13 @@ hero_html = (
     +   '<div class="hero-stat" style="cursor:pointer;" onmouseover="this.style.opacity=\'0.7\'" onmouseout="this.style.opacity=\'1\'">'
     +     '<div class="hero-stat-num">KG</div>'
     +     '<div class="hero-stat-label">Knowledge Graph</div>'
+    +   '</div>'
+    + '</a>'
+    + '<div class="hero-divider"></div>'
+    + '<a href="#section-cg" style="text-decoration:none;">'
+    +   '<div class="hero-stat" style="cursor:pointer;" onmouseover="this.style.opacity=\'0.7\'" onmouseout="this.style.opacity=\'1\'">'
+    +     '<div class="hero-stat-num">CG</div>'
+    +     '<div class="hero-stat-label">Causal Graph</div>'
     +   '</div>'
     + '</a>'
     + '</div>'
@@ -1104,12 +1143,15 @@ with col2:
         st.session_state.show_qa_dialog = False
     if 'show_kg_dialog' not in st.session_state:
         st.session_state.show_kg_dialog = False
+    if 'show_cg_dialog' not in st.session_state:
+        st.session_state.show_cg_dialog = False
 
     # ── Q&A Button
     if st.button("📚 Send to Q&A", use_container_width=True, key="send_qa"):
         if uploaded_files and len(uploaded_files) > 0:
             st.session_state.show_qa_dialog = True
             st.session_state.show_kg_dialog = False
+            st.session_state.show_cg_dialog = False
         else:
             st.warning("Please upload files first.")
 
@@ -1176,6 +1218,7 @@ with col2:
         if uploaded_files and len(uploaded_files) > 0:
             st.session_state.show_kg_dialog = True
             st.session_state.show_qa_dialog = False
+            st.session_state.show_cg_dialog = False
         else:
             st.warning("Please upload files first.")
 
@@ -1223,8 +1266,6 @@ with col2:
             if st.button("✕ Cancel", use_container_width=True, key="kg_cancel"):
                 st.session_state.show_kg_dialog = False
                 st.rerun()
-# with col2:
-#     st.markdown('<span class="section-label">Configuration</span>', unsafe_allow_html=True)
 
 #     k = st.slider("Keywords to Extract (Knowledge Graph)", min_value=5, max_value=50, value=15, step=5)
 
@@ -1359,7 +1400,86 @@ with col2:
     #         if st.button("✕ Cancel", use_container_width=True, key="kg_cancel"):
     #             st.session_state.show_kg_dialog = False
     #             st.rerun()
-       
+
+    st.markdown("<div style='margin-top:1rem;'></div>", unsafe_allow_html=True)
+
+    # ── CG Button (only active after KG is generated)
+    kg_ready = bool(st.session_state.processed_pdfs)
+    cg_help = (
+        "Extract causal relationships from the KG edges using a second LLM pass."
+        if kg_ready else
+        "Generate a Knowledge Graph first, then click here to extract causal relationships."
+    )
+    if st.button(
+        "⟶ Generate Causal Graph",
+        use_container_width=True,
+        key="gen_cg",
+        disabled=not kg_ready,
+        help=cg_help
+    ):
+        st.session_state.show_cg_dialog = True
+        st.session_state.show_kg_dialog = False
+        st.session_state.show_qa_dialog = False
+
+    # ── CG inline card
+    if st.session_state.show_cg_dialog:
+        st.markdown("""
+        <div style="
+            background:#FFF5F0;
+            border:1.5px solid #E67E22;
+            border-left:4px solid #C0392B;
+            border-radius:6px;
+            padding:1.25rem 1.5rem 0.75rem 1.5rem;
+            margin-top:0.5rem;
+            margin-bottom:0.25rem;
+        ">
+            <div style="font-family:'Playfair Display',serif;font-size:1.05rem;font-weight:600;color:#0D2347;margin-bottom:0.2rem;">
+                ⟶ Causal Graph Configuration
+            </div>
+            <div style="font-size:0.76rem;color:#5F7A9D;letter-spacing:0.04em;">
+                The LLM will re-analyse the KG edges to identify causal relationships
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        cg_model = st.selectbox(
+            "LLM Model for Causal Extraction",
+            options=["llama3", "mistral:7b", "llama3:latest", "gemma3:12b"],
+            index=0,
+            key="cg_model_dialog",
+            help="Ollama model to reason over KG edges and identify causal links."
+        )
+        col_confirm, col_cancel = st.columns(2)
+        with col_confirm:
+            if st.button("✓ Confirm", use_container_width=True, key="cg_confirm"):
+                st.session_state.show_cg_dialog = False
+                st.session_state.cg_model_selected = cg_model
+                st.rerun()
+        with col_cancel:
+            if st.button("✕ Cancel", use_container_width=True, key="cg_cancel"):
+                st.session_state.show_cg_dialog = False
+                st.rerun()
+
+    # ── CG Processing
+    if 'cg_model_selected' in st.session_state and st.session_state.get('cg_model_selected'):
+        cg_model = st.session_state.cg_model_selected
+        st.session_state.cg_model_selected = None
+
+        all_kg_edges = []
+        for data in st.session_state.processed_pdfs.values():
+            all_kg_edges.extend(data.get('relations', []))
+
+        if all_kg_edges:
+            st.info(f"Sending {len(all_kg_edges)} KG edges to **{cg_model}** for causal analysis…")
+            with st.spinner("Extracting causal relationships (Pass 2)…"):
+                try:
+                    causal_rels = extract_causal_relations(all_kg_edges, model=cg_model)
+                    st.session_state.cg_relations = causal_rels
+                except Exception as e:
+                    st.error(f"Causal extraction error: {str(e)}")
+            st.rerun()
+        else:
+            st.warning("No KG edges found. Please generate a Knowledge Graph first.")
 
     # ── KG Processing
     if 'kg_model_selected' in st.session_state and st.session_state.kg_model_selected and uploaded_files and len(uploaded_files) > 0:
@@ -1442,7 +1562,7 @@ with col2:
         progress_text.empty()
         progress_bar.empty()
         st.success(f"✓ Knowledge graphs generated for {total_files} file(s).")
-        st.info("Tip — use 'Send to Q&A' to also enable document question answering.")
+        st.info("Tip — click 'Generate Causal Graph' below to discover causal relationships from the KG edges.")
 
         if filter_variables:
             st.markdown('<span class="section-label">Variable Filtering Summary</span>', unsafe_allow_html=True)
@@ -1472,6 +1592,8 @@ with col2:
             st.markdown('<span class="section-label">Datasets Identified</span>', unsafe_allow_html=True)
             for ds in set(all_datasets):
                 st.markdown(f'<div class="polar-info-row">◎ {ds}</div>', unsafe_allow_html=True)
+
+        st.rerun()  # re-render so CG button reads populated processed_pdfs and becomes enabled
 
 
 # ══════════════════════════════════════════════════════════════════════════
@@ -1736,6 +1858,7 @@ else:
         unsafe_allow_html=True
     )
 
+
 # ══════════════════════════════════════════════════════════════════════════
 #  SECTION 2 — Q&A
 # ══════════════════════════════════════════════════════════════════════════
@@ -1920,13 +2043,93 @@ else:
     )
 
 
+# ══════════════════════════════════════════════════════════════════════════
+#  SECTION 4 — CAUSAL GRAPH
+# ══════════════════════════════════════════════════════════════════════════
+st.markdown("---")
+st.markdown('<div id="section-cg"></div>', unsafe_allow_html=True)
+st.markdown('<span class="section-label">Step 04</span>', unsafe_allow_html=True)
+st.markdown('<div class="section-heading">Causal <em>Graph</em></div>', unsafe_allow_html=True)
+
+st.markdown(
+    '<div class="graph-legend">'
+    '<div class="graph-legend-item"><div class="graph-legend-dot" style="background:#C0392B;"></div> Root Cause</div>'
+    '<div class="graph-legend-item"><div class="graph-legend-dot" style="background:#8E44AD;"></div> Intermediate</div>'
+    '<div class="graph-legend-item"><div class="graph-legend-dot" style="background:#E67E22;"></div> Terminal Effect</div>'
+    '<div class="graph-legend-item" style="font-size:0.68rem;color:#5F7A9D !important;">Arrows show causal direction →</div>'
+    '</div>',
+    unsafe_allow_html=True
+)
+
+if st.session_state.cg_relations:
+    causal_rels = st.session_state.cg_relations
+
+    st.markdown('<span class="section-label">Causal Summary</span>', unsafe_allow_html=True)
+    all_causes = list({r['cause'] for r in causal_rels})
+    all_effects = list({r['effect'] for r in causal_rels})
+    root_causes = [c for c in all_causes if c not in {r['effect'] for r in causal_rels}]
+    terminal_effects = [e for e in all_effects if e not in {r['cause'] for r in causal_rels}]
+    avg_conf = sum(r['confidence'] for r in causal_rels) / len(causal_rels)
+
+    c1, c2, c3, c4 = st.columns(4)
+    with c1: st.metric("Causal Pairs", len(causal_rels))
+    with c2: st.metric("Unique Variables", len(set(all_causes) | set(all_effects)))
+    with c3: st.metric("Root Causes", len(root_causes))
+    with c4: st.metric("Avg Confidence", f"{avg_conf:.2f}")
+
+    if root_causes:
+        st.markdown('<span class="section-label">Root Causes Identified</span>', unsafe_allow_html=True)
+        rc_html = "".join(f'<span class="causal-cause-tag">{rc}</span>' for rc in root_causes)
+        st.markdown(rc_html, unsafe_allow_html=True)
+
+    if terminal_effects:
+        st.markdown('<span class="section-label">Terminal Effects</span>', unsafe_allow_html=True)
+        te_html = "".join(f'<span class="causal-effect-tag">{te}</span>' for te in terminal_effects)
+        st.markdown(te_html, unsafe_allow_html=True)
+
+    try:
+        _, cg_html = generate_causal_graph(causal_rels)
+        st.components.v1.html(cg_html, height=500, scrolling=True)
+    except Exception as e:
+        st.error(f"Graph rendering error: {str(e)}")
+
+    with st.expander("View All Causal Relationships"):
+        for rel in sorted(causal_rels, key=lambda x: -x['confidence']):
+            conf_color = "#C0392B" if rel['confidence'] >= 0.7 else "#E67E22" if rel['confidence'] >= 0.4 else "#F39C12"
+            st.markdown(
+                f'<div class="polar-info-row" style="border-left-color:{conf_color};">'
+                f'<b>{rel["cause"]}</b> &nbsp;⟶&nbsp; <span style="color:{conf_color};font-weight:600;">{rel["label"]}</span> &nbsp;⟶&nbsp; <b>{rel["effect"]}</b>'
+                f'&nbsp;&nbsp;<span style="font-size:0.72rem;color:#5F7A9D;">confidence: {rel["confidence"]}</span>'
+                f'</div>',
+                unsafe_allow_html=True
+            )
+else:
+    st.markdown(
+        '<div class="empty-state">'
+        '<svg width="120" height="120" viewBox="0 0 200 200" style="opacity:0.25;margin-bottom:1.5rem;">'
+        '<circle cx="40" cy="100" r="14" fill="#C0392B"/>'
+        '<circle cx="100" cy="60" r="14" fill="#8E44AD"/>'
+        '<circle cx="100" cy="140" r="14" fill="#8E44AD"/>'
+        '<circle cx="160" cy="100" r="14" fill="#E67E22"/>'
+        '<line x1="54" y1="100" x2="86" y2="68" stroke="#C0392B" stroke-width="2"/>'
+        '<line x1="54" y1="100" x2="86" y2="132" stroke="#C0392B" stroke-width="2"/>'
+        '<line x1="114" y1="60" x2="146" y2="92" stroke="#8E44AD" stroke-width="2"/>'
+        '<line x1="114" y1="140" x2="146" y2="108" stroke="#8E44AD" stroke-width="2"/>'
+        '</svg>'
+        '<div class="empty-state-title">No causal graph yet</div>'
+        '<div class="empty-state-text">First generate a Knowledge Graph, then click "Generate Causal Graph" to discover causal relationships using a second LLM pass.</div>'
+        '</div>',
+        unsafe_allow_html=True
+    )
+
+
 # ─── EXPORT ────────────────────────────────────────────────────────────────
 if st.session_state.processed_pdfs:
     st.markdown("---")
     st.markdown('<span class="section-label">Export</span>', unsafe_allow_html=True)
     st.markdown('<div class="section-heading" style="font-size:1.4rem!important;">Download <em>Results</em></div>', unsafe_allow_html=True)
 
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
     all_relations = []
     for data in st.session_state.processed_pdfs.values():
         all_relations.extend(data.get('relations', []))
@@ -1935,7 +2138,7 @@ if st.session_state.processed_pdfs:
         if all_relations:
             json_data = json.dumps(all_relations, indent=2)
             st.download_button(
-                label="Export Relations — JSON",
+                label="Export KG — JSON",
                 data=json_data,
                 file_name="knowledge_graph.json",
                 mime="application/json",
@@ -1945,7 +2148,7 @@ if st.session_state.processed_pdfs:
         if all_relations:
             df = pd.DataFrame(all_relations)
             st.download_button(
-                label="Export Relations — CSV",
+                label="Export KG — CSV",
                 data=df.to_csv(index=False),
                 file_name="knowledge_graph.csv",
                 mime="text/csv",
@@ -1958,6 +2161,16 @@ if st.session_state.processed_pdfs:
                 label="Export Datasets — CSV",
                 data=datasets_csv,
                 file_name="extracted_datasets.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
+    with col4:
+        if st.session_state.cg_relations:
+            cg_df = pd.DataFrame(st.session_state.cg_relations)
+            st.download_button(
+                label="Export Causal — CSV",
+                data=cg_df.to_csv(index=False),
+                file_name="causal_graph.csv",
                 mime="text/csv",
                 use_container_width=True
             )

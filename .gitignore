@@ -9,6 +9,7 @@ __pycache__/
 .Python
 env/
 venv/
+.venv/
 ENV/
 build/
 develop-eggs/
@@ -49,3 +50,27 @@ temp_*.pdf
 llm_comparison/
 qa_test_results_*.txt
 test_output.log
+
+# Secrets & keys
+*.pem
+*.key
+secrets.json
+config_secret.py
+
+# Logs
+*.log
+logs/
+
+# PowerPoint & Office files
+*.pptx
+*.ppt
+*.xlsx
+*.docx
+
+# Scripts not for repo
+make_ppt.py
+
+# Local notes not for repo
+SETUP_NOTES.md
+readforchanges.md
+
