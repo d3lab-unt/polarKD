@@ -1,0 +1,522 @@
+[
+  {
+    "canonical_name": "https://doi.org/10.1594/PANGAEA.937271",
+    "resolved_url": "https://doi.org/10.1594/PANGAEA.937271",
+    "repository": "pangaea",
+    "doi": null,
+    "accession": null,
+    "notes": "",
+    "resolution_method": "existing_url",
+    "mention_count": 19,
+    "sources": [
+      "mosaic_arctic.pdf"
+    ]
+  },
+  {
+    "canonical_name": "10.1594/PANGAEA.937271",
+    "resolved_url": "https://doi.org/10.1594/PANGAEA.937271",
+    "repository": "pangaea",
+    "doi": "10.1594/pangaea.937271",
+    "accession": null,
+    "notes": "",
+    "resolution_method": "existing_url",
+    "mention_count": 14,
+    "sources": [
+      "mosaic_arctic.pdf"
+    ]
+  },
+  {
+    "canonical_name": "2019O2 processed data",
+    "resolved_url": "https://doi.org/10.1594/PANGAEA.940298",
+    "repository": "pangaea",
+    "doi": "10.1594/pangaea.940298",
+    "accession": null,
+    "notes": "",
+    "resolution_method": "existing_url",
+    "mention_count": 13,
+    "sources": [
+      "mosaic_arctic.pdf"
+    ]
+  },
+  {
+    "canonical_name": "Raw seawater temperature, conductivity and salinity obtained at different depths by CTD buoy 2019O4 as part of the MOSAiC Distributed Network",
+    "resolved_url": "https://doi.org/10.1594/PANGAEA.940282",
+    "repository": "pangaea",
+    "doi": "10.1594/pangaea.933933",
+    "accession": null,
+    "notes": "",
+    "resolution_method": "existing_url",
+    "mention_count": 13,
+    "sources": [
+      "mosaic_arctic.pdf"
+    ]
+  },
+  {
+    "canonical_name": "2019O1 raw data",
+    "resolved_url": "https://doi.org/10.1594/PANGAEA.933934",
+    "repository": "pangaea",
+    "doi": "10.1594/pangaea.933934",
+    "accession": null,
+    "notes": "",
+    "resolution_method": "existing_url",
+    "mention_count": 12,
+    "sources": [
+      "mosaic_arctic.pdf"
+    ]
+  },
+  {
+    "canonical_name": "PANGAEA.940320",
+    "resolved_url": null,
+    "repository": "pangaea",
+    "doi": null,
+    "accession": "PANGAEA.940320",
+    "notes": "Could not resolve automatically — manual lookup required",
+    "resolution_method": "unresolved",
+    "mention_count": 8,
+    "sources": [
+      "mosaic_arctic.pdf"
+    ]
+  },
+  {
+    "canonical_name": "PANGAEA.933934",
+    "resolved_url": null,
+    "repository": "pangaea",
+    "doi": null,
+    "accession": "PANGAEA.933934",
+    "notes": "Could not resolve automatically — manual lookup required",
+    "resolution_method": "unresolved",
+    "mention_count": 8,
+    "sources": [
+      "mosaic_arctic.pdf"
+    ]
+  },
+  {
+    "canonical_name": "MOSAiC",
+    "resolved_url": "https://doi.org/10.1594/PANGAEA.940320",
+    "repository": "pangaea",
+    "doi": "10.1594/pangaea.940320",
+    "accession": null,
+    "notes": "",
+    "resolution_method": "existing_url",
+    "mention_count": 7,
+    "sources": [
+      "mosaic_arctic.pdf"
+    ]
+  },
+  {
+    "canonical_name": "MOSAiC CTD buoy data",
+    "resolved_url": "https://doi.org/10.5194/essd-14-4901-2022",
+    "repository": "other",
+    "doi": "10.5194/essd-14-4901-2022",
+    "accession": null,
+    "notes": "",
+    "resolution_method": "existing_url",
+    "mention_count": 5,
+    "sources": [
+      "mosaic_arctic.pdf"
+    ]
+  },
+  {
+    "canonical_name": "10.1525/elementa.2021.00062",
+    "resolved_url": "https://doi.org/10.1525/elementa.2021.00062",
+    "repository": "other",
+    "doi": "10.1525/elementa.2021.00062",
+    "accession": null,
+    "notes": "",
+    "resolution_method": "existing_url",
+    "mention_count": 4,
+    "sources": [
+      "mosaic_arctic.pdf"
+    ]
+  },
+  {
+    "canonical_name": "PANGAEA.937271",
+    "resolved_url": null,
+    "repository": "pangaea",
+    "doi": null,
+    "accession": "PANGAEA.937271",
+    "notes": "Could not resolve automatically — manual lookup required",
+    "resolution_method": "unresolved",
+    "mention_count": 3,
+    "sources": [
+      "mosaic_arctic.pdf"
+    ]
+  },
+  {
+    "canonical_name": "10.5670/oceanog.2017.222",
+    "resolved_url": null,
+    "repository": null,
+    "doi": "10.5670/oceanog.2017.222",
+    "accession": null,
+    "notes": "Could not resolve automatically — manual lookup required",
+    "resolution_method": "unresolved",
+    "mention_count": 2,
+    "sources": [
+      "mosaic_arctic.pdf"
+    ]
+  },
+  {
+    "canonical_name": "10.3389/fmars.2021.625395",
+    "resolved_url": null,
+    "repository": null,
+    "doi": "10.3389/fmars.2021.625395",
+    "accession": null,
+    "notes": "Could not resolve automatically — manual lookup required",
+    "resolution_method": "unresolved",
+    "mention_count": 2,
+    "sources": [
+      "mosaic_arctic.pdf"
+    ]
+  },
+  {
+    "canonical_name": "10.5281/zenodo.5541624",
+    "resolved_url": "https://doi.org/10.5281/zenodo.5541624",
+    "repository": "zenodo",
+    "doi": "10.5281/zenodo.5541624",
+    "accession": null,
+    "notes": "",
+    "resolution_method": "existing_url",
+    "mention_count": 2,
+    "sources": [
+      "mosaic_arctic.pdf"
+    ]
+  },
+  {
+    "canonical_name": "The Drift-Towing Ocean Profiler",
+    "resolved_url": "http://coas.ouc.edu.cn/pogoc/2021/0",
+    "repository": "other",
+    "doi": null,
+    "accession": null,
+    "notes": "",
+    "resolution_method": "existing_url",
+    "mention_count": 2,
+    "sources": [
+      "mosaic_arctic.pdf"
+    ]
+  },
+  {
+    "canonical_name": "2019O1 processed data",
+    "resolved_url": "https://doi.org/10.1594/PANGAEA.940271",
+    "repository": "pangaea",
+    "doi": "10.1594/pangaea.940271",
+    "accession": null,
+    "notes": "",
+    "resolution_method": "existing_url",
+    "mention_count": 2,
+    "sources": [
+      "mosaic_arctic.pdf"
+    ]
+  },
+  {
+    "canonical_name": "https://doi.org/10.5281/zenodo.5541624",
+    "resolved_url": "https://doi.org/10.5281/zenodo.5541624",
+    "repository": "zenodo",
+    "doi": null,
+    "accession": null,
+    "notes": "",
+    "resolution_method": "existing_url",
+    "mention_count": 1,
+    "sources": [
+      "mosaic_arctic.pdf"
+    ]
+  },
+  {
+    "canonical_name": "10.3389/fmars.2019.00457",
+    "resolved_url": null,
+    "repository": null,
+    "doi": "10.3389/fmars.2019.00457",
+    "accession": null,
+    "notes": "Could not resolve automatically — manual lookup required",
+    "resolution_method": "unresolved",
+    "mention_count": 1,
+    "sources": [
+      "mosaic_arctic.pdf"
+    ]
+  },
+  {
+    "canonical_name": "10.1357/002224007783649484",
+    "resolved_url": null,
+    "repository": null,
+    "doi": "10.1357/002224007783649484",
+    "accession": null,
+    "notes": "Could not resolve automatically — manual lookup required",
+    "resolution_method": "unresolved",
+    "mention_count": 1,
+    "sources": [
+      "mosaic_arctic.pdf"
+    ]
+  },
+  {
+    "canonical_name": "10.18739/A2JS9H85P",
+    "resolved_url": "https://arcticdata.io/catalog/view/doi:10.18739/A2JS9H85P",
+    "repository": "NSF Arctic Data Center",
+    "doi": "10.18739/a2js9h85p",
+    "accession": null,
+    "notes": "DOI: 10.18739/a2js9h85p",
+    "resolution_method": "doi",
+    "mention_count": 1,
+    "sources": [
+      "mosaic_arctic.pdf"
+    ]
+  },
+  {
+    "canonical_name": "Argo",
+    "resolved_url": "https://argo.ucsd.edu/data/",
+    "repository": "argo",
+    "doi": null,
+    "accession": null,
+    "notes": "Free download via Argo GDAC.",
+    "resolution_method": "known_registry",
+    "mention_count": 1,
+    "sources": [
+      "mosaic_arctic.pdf"
+    ]
+  },
+  {
+    "canonical_name": "Woods Hole Ice-Tethered Profiler dataset",
+    "resolved_url": null,
+    "repository": null,
+    "doi": null,
+    "accession": null,
+    "notes": "Could not resolve automatically — manual lookup required",
+    "resolution_method": "unresolved",
+    "mention_count": 1,
+    "sources": [
+      "mosaic_arctic.pdf"
+    ]
+  },
+  {
+    "canonical_name": "Salinity Ice Tether (SIT) dataset",
+    "resolved_url": null,
+    "repository": null,
+    "doi": null,
+    "accession": null,
+    "notes": "Could not resolve automatically — manual lookup required",
+    "resolution_method": "unresolved",
+    "mention_count": 1,
+    "sources": [
+      "mosaic_arctic.pdf"
+    ]
+  },
+  {
+    "canonical_name": "AWI (Alfred-Wegener-Institut) buoy program",
+    "resolved_url": null,
+    "repository": null,
+    "doi": null,
+    "accession": null,
+    "notes": "Could not resolve automatically — manual lookup required",
+    "resolution_method": "unresolved",
+    "mention_count": 1,
+    "sources": [
+      "mosaic_arctic.pdf"
+    ]
+  },
+  {
+    "canonical_name": "Coastline data from Wessel and Smith (1996)",
+    "resolved_url": null,
+    "repository": null,
+    "doi": null,
+    "accession": null,
+    "notes": "Could not resolve automatically — manual lookup required",
+    "resolution_method": "unresolved",
+    "mention_count": 1,
+    "sources": [
+      "mosaic_arctic.pdf"
+    ]
+  },
+  {
+    "canonical_name": "SST-CTD handheld unpumped self-recording CTD profiles",
+    "resolved_url": null,
+    "repository": null,
+    "doi": null,
+    "accession": null,
+    "notes": "Could not resolve automatically — manual lookup required",
+    "resolution_method": "unresolved",
+    "mention_count": 1,
+    "sources": [
+      "mosaic_arctic.pdf"
+    ]
+  },
+  {
+    "canonical_name": "JAMSTEC Compact Arctic Drifter (J-CAD) dataset",
+    "resolved_url": "https://zenodo.org/record/18832613",
+    "repository": "zenodo",
+    "doi": null,
+    "accession": null,
+    "notes": "Zenodo search match: a drifter dataset from the european space agency ocean training course 2025",
+    "resolution_method": "zenodo",
+    "mention_count": 1,
+    "sources": [
+      "mosaic_arctic.pdf"
+    ]
+  },
+  {
+    "canonical_name": "Processed data of CTD buoys 2019O1 to 2019O8 as part of the MOSAiC Distributed Network",
+    "resolved_url": "https://doi.org/10.1594/PANGAEA.940320",
+    "repository": "pangaea",
+    "doi": "10.1594/pangaea.940320",
+    "accession": null,
+    "notes": "",
+    "resolution_method": "existing_url",
+    "mention_count": 1,
+    "sources": [
+      "mosaic_arctic.pdf"
+    ]
+  },
+  {
+    "canonical_name": "CTD buoys 2019O1 to 2019O8 data set",
+    "resolved_url": "https://doi.org/10.1594/PANGAEA.940304",
+    "repository": "pangaea",
+    "doi": "10.1594/pangaea.940304",
+    "accession": null,
+    "notes": "",
+    "resolution_method": "existing_url",
+    "mention_count": 1,
+    "sources": [
+      "mosaic_arctic.pdf"
+    ]
+  },
+  {
+    "canonical_name": "The International Bathymetric Chart of the Arctic Ocean Version 4.0",
+    "resolved_url": null,
+    "repository": "other",
+    "doi": "10.1038/s41597-020-0520-9",
+    "accession": null,
+    "notes": "Could not resolve automatically — manual lookup required",
+    "resolution_method": "unresolved",
+    "mention_count": 1,
+    "sources": [
+      "mosaic_arctic.pdf"
+    ]
+  },
+  {
+    "canonical_name": "Drift trajectories of the main sites of the Distributed Network of MOSAiC 2019/2020",
+    "resolved_url": "https://doi.org/10.1594/PANGAEA.937204",
+    "repository": "pangaea",
+    "doi": "10.1594/pangaea.937204",
+    "accession": null,
+    "notes": "",
+    "resolution_method": "existing_url",
+    "mention_count": 1,
+    "sources": [
+      "mosaic_arctic.pdf"
+    ]
+  },
+  {
+    "canonical_name": "A full year of turbulence measurements from a drift campaign in the Arctic Ocean 2019–2020",
+    "resolved_url": "https://doi.org/10.1038/s41597-022-01574-1",
+    "repository": "other",
+    "doi": "10.1038/s41597-022-01574-1",
+    "accession": null,
+    "notes": "",
+    "resolution_method": "existing_url",
+    "mention_count": 1,
+    "sources": [
+      "mosaic_arctic.pdf"
+    ]
+  },
+  {
+    "canonical_name": "The Rossby radius in the Arctic Ocean",
+    "resolved_url": "https://doi.org/10.5194/os-10-967-2014",
+    "repository": "other",
+    "doi": "10.5194/os-10-967-2014",
+    "accession": null,
+    "notes": "",
+    "resolution_method": "existing_url",
+    "mention_count": 1,
+    "sources": [
+      "mosaic_arctic.pdf"
+    ]
+  },
+  {
+    "canonical_name": "Overview of the MOSAiC expedition – Atmosphere",
+    "resolved_url": "https://doi.org/10.1525/elementa.2021.00060",
+    "repository": "other",
+    "doi": "10.1525/elementa.2021.00060",
+    "accession": null,
+    "notes": "",
+    "resolution_method": "existing_url",
+    "mention_count": 1,
+    "sources": [
+      "mosaic_arctic.pdf"
+    ]
+  },
+  {
+    "canonical_name": "Ocean Data Standards Volume 3. Recommendation for a Quality Flag Scheme for the Exchange of Oceanographic and Marine Meteorological Data",
+    "resolved_url": "https://doi.org/10.25607/OBP-6",
+    "repository": "other",
+    "doi": "10.25607/obp-6",
+    "accession": null,
+    "notes": "",
+    "resolution_method": "existing_url",
+    "mention_count": 1,
+    "sources": [
+      "mosaic_arctic.pdf"
+    ]
+  },
+  {
+    "canonical_name": "Observations of a Submesoscale Cyclonic Filament in the Marginal Ice Zone",
+    "resolved_url": "https://doi.org/10.1029/2018GL077897",
+    "repository": "other",
+    "doi": "10.1029/2018gl077897",
+    "accession": null,
+    "notes": "",
+    "resolution_method": "existing_url",
+    "mention_count": 1,
+    "sources": [
+      "mosaic_arctic.pdf"
+    ]
+  },
+  {
+    "canonical_name": "Insights into Water Mass Circulation and Origins in the Central Arctic Ocean from in-situ Dissolved Organic Matter Fluorescence",
+    "resolved_url": "https://doi.org/10.1029/2021JC017407",
+    "repository": "other",
+    "doi": "10.1029/2021jc017407",
+    "accession": null,
+    "notes": "",
+    "resolution_method": "existing_url",
+    "mention_count": 1,
+    "sources": [
+      "mosaic_arctic.pdf"
+    ]
+  },
+  {
+    "canonical_name": "UpTempO buoys deployed in the Arctic Ocean in 2017",
+    "resolved_url": "https://doi.org/10.1873",
+    "repository": "arctic_data_center",
+    "doi": "10.1873",
+    "accession": null,
+    "notes": "",
+    "resolution_method": "existing_url",
+    "mention_count": 1,
+    "sources": [
+      "mosaic_arctic.pdf"
+    ]
+  },
+  {
+    "canonical_name": "Eddies and the Distribution of Eddy Kinetic Energy in the Arctic Ocean",
+    "resolved_url": "https://doi.org/10.5670/oceanog.2022.122",
+    "repository": "other",
+    "doi": "10.5670/oceanog.2022.122",
+    "accession": null,
+    "notes": "",
+    "resolution_method": "existing_url",
+    "mention_count": 1,
+    "sources": [
+      "mosaic_arctic.pdf"
+    ]
+  },
+  {
+    "canonical_name": "A global, self-consistent, hierarchical, high-resolution shoreline database",
+    "resolved_url": null,
+    "repository": "other",
+    "doi": "10.1029/96jb00104",
+    "accession": null,
+    "notes": "Could not resolve automatically — manual lookup required",
+    "resolution_method": "unresolved",
+    "mention_count": 1,
+    "sources": [
+      "mosaic_arctic.pdf"
+    ]
+  }
+]

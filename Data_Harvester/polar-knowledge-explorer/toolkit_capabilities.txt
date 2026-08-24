@@ -1,0 +1,223 @@
+POLARIKD DATASET HARVESTER — CAPABILITIES REFERENCE
+=====================================================
+File: dataset_harvester/extractor.py
+Last updated: 2026-06-24
+
+
+WHAT IT DOES
+------------
+Reads a research PDF and extracts every dataset mentioned in it —
+whether the dataset has a URL, DOI, accession number, or is only
+referred to by name. Output is a list of DatasetRef objects, each
+carrying: name, URL, DOI, accession number, repository hint,
+primary/cited flag, and the raw sentence it was found in.
+
+Two passes run sequentially:
+  Pass 1 — Regex  (fast, deterministic, no cost)
+  Pass 2 — LLM    (reads chunks the regex may have missed)
+
+
+HOW IT READS THE PDF
+---------------------
+- Uses pdfplumber to extract text page by page.
+- Detects two-column layouts: splits each page at its horizontal
+  midpoint and processes left and right columns independently so
+  section headings are never scrambled with unrelated text from
+  the opposite column.
+- Joins URLs that were split across line breaks by PDF word-wrap
+  (e.g. "https://example.\ncom/path" → "https://example.com/path").
+- Warns if extracted text is < 3,000 chars (likely a scanned PDF
+  with no embedded text — extraction will be very limited).
+
+
+PASS 1 — HOW REGEX SURFS THE TEXT
+-----------------------------------
+Scans the full text for six types of explicit identifiers:
+
+  1. URLs (https://...)
+     Keeps only URLs that have a recognisable data-repository domain
+     OR appear immediately after data-access language
+     ("available at", "downloaded from", "deposited at", etc.).
+
+  2. DOIs (10.XXXX/...)
+     Keeps only DOIs whose prefix belongs to a known data repository
+     (PANGAEA = 10.1594, Zenodo = 10.5281, NSIDC = 10.5067, etc.).
+     Discards DOIs whose prefix belongs to a journal publisher.
+
+  3. PANGAEA accession numbers  e.g. PANGAEA.940320
+  4. Zenodo record IDs          e.g. zenodo.org/record/1234567
+  5. NSIDC accession numbers    e.g. NSIDC-0001
+  6. Known named datasets       e.g. ERA5, MODIS, CMIP6, GRACE,
+                                     ICESat-2, JRA-55, ARGO, GLORYS
+
+For every match the regex also checks a ±180-character window for
+"use context" words ("we used", "data were downloaded from", etc.)
+and whether the match falls inside a "Data Availability" section.
+This sets the used_in_study flag on the DatasetRef.
+
+
+PASS 2 — HOW THE LLM SURFS THE TEXT
+--------------------------------------
+Designed to catch datasets mentioned by name only, with no URL or DOI.
+
+Step 1 — Truncate
+  Cuts the text at the first occurrence of "References",
+  "Acknowledgements", "Funding", or "Appendix" to avoid feeding
+  the reference list to the LLM (which causes massive over-extraction).
+  The cut is only applied if the section marker appears past
+  max(20,000 chars, 20% of the document) — prevents a "Funding"
+  keyword in the PDF header from cutting the whole paper.
+
+Step 2 — Chunk
+  Splits the truncated text into 3,000-character chunks with
+  400-character overlap between consecutive chunks.
+
+Step 3 — Signal filter (pre-LLM gate)
+  Each chunk is checked against a large signal regex before being
+  sent to the LLM. Chunks with NO signals are skipped entirely
+  (saves cost and time).
+
+  Signals that let a chunk through include:
+    - Explicit data language: "dataset", "data availability",
+      "downloaded from", "accession", "repository", "zenodo",
+      "pangaea", "doi.org/10.XXXX"
+    - Known product names: ERA5, MODIS, VIIRS, CryoSat, Sentinel,
+      ICESat, GRACE, MERRA, CMIP, TOPAZ, PIOMAS, AMSR, HYCOM,
+      GLORYS, OSTIA, GPM, IMERG, CALIPSO, NCEP, JRA-55, CFSR,
+      GISTEMP, HadCRUT, ARGO, MOSAiC, SHEBA
+    - General observation terms: reanalysis, remote sensing,
+      satellite data, in situ, buoy, CTD, mooring, observatory,
+      field campaign, field station
+    - Field measurement terms: "samples collected", "water samples",
+      "soil samples", "incubated", "dissolved organic",
+      permafrost, tundra, peatland, wetland, watershed, catchment,
+      flux tower, eddy covariance, ice core, sediment core,
+      water column, depth profile, monitoring station/network,
+      long-term data/monitoring
+    - Climate/ocean science terms: RCP/SSP, climate model,
+      GCM, AOGCM, earth system model, model output/simulation,
+      sea surface temperature, ocean heat/carbon, pCO2/fCO2,
+      sea ice extent/concentration/thickness,
+      temperature record/anomaly/trend, instrumental record,
+      paleoclimate, proxy data
+    - Named climate models: HadGEM, GISS, CESM, MPI-ESM, IPSL,
+      MIROC, ACCESS, CanESM, NorESM, GFDL
+
+Step 4 — LLM call
+  Each signal-passing chunk is sent to the LLM with a system prompt
+  instructing it to return ONLY a JSON array of dataset objects
+  (name, url, doi, accession, repository_hint, raw_citation,
+  is_primary). Temperature = 0 for deterministic output.
+
+Step 5 — JSON extraction (4-layer parser)
+  The LLM response is parsed with a robust 4-layer extractor:
+    Layer 1: strip markdown fences (``` ```json ```), try json.loads()
+    Layer 2: regex-extract outermost [...] block, try json.loads()
+    Layer 3: extract individual {...} objects if no array brackets
+    Layer 4: raise JSONDecodeError — logged as "JSON-err"
+  This handles llama3's habit of wrapping JSON in prose/explanations.
+
+Step 6 — False-positive filter
+  Each LLM-returned dataset name passes through _is_likely_dataset():
+
+  REJECTED if name matches any of:
+    - Lab instruments: analyzer, spectrometer, chromatograph,
+      centrifuge, incubator, sampler, probe, logger, thermometer
+    - Lab brand names: Whatman, Millipore, Sigma-Aldrich,
+      Thermo Fisher, Merck, Shimadzu, Agilent, Waters,
+      PerkinElmer, Varian, Bruker, GF/[letter], filter paper
+    - Journal names: Biogeosciences, Geophysical Research Letters,
+      Nature Climate, Science Advances, etc.
+    - Figure/table cross-references: "Fig. 3a", "Table 2",
+      "Supplementary Fig.", "Appendix A"
+    - Author citations containing "et al."
+    - Funding body strings: NWO, NSF, NSERC, NIH, ERC, DFG,
+      NERC, venigrant, grant #, award #, Permafrost Carbon Network,
+      Great Rivers Observatory
+    - Strings longer than 250 characters (multi-grant acknowledgements)
+    - Exact bare measurement terms: doc, dic, toc, poc, tdn, rdoc,
+      dom, measurements, samples, data, results, analysis,
+      soil literature, aquatic literature
+
+  Also rejected if name is empty or shorter than 3 characters.
+
+
+WHAT IT IGNORES
+---------------
+Regex pass ignores:
+  - Truncated URLs/DOIs (ending in - / . _ =)
+  - Journal publisher URLs: nature.com, sciencedirect.com,
+    journals.ametsoc.org, pnas.org, springer.com, wiley.com,
+    cambridge.org, agu.org, researchgate.net, arxiv.org, etc.
+  - Journal DOI prefixes: 10.1016 (Elsevier), 10.1038 (Nature),
+    10.1126 (Science), 10.1175 (AMS), 10.1029 (AGU), 10.5194
+    (Copernicus), 10.1371 (PLOS ONE), 10.7554 (eLife), 10.1890
+    (ESA), 10.1139 (NRC/Arctic), 10.3354 (Inter-Research),
+    10.3402 (Polar Research), 10.4319 (L&O), 10.3389 (Frontiers),
+    10.1088 (IOP), 10.1080 (T&F), and ~25 more.
+  - URLs with no data-repository hint AND no data-access language
+    in the surrounding 150 characters.
+
+LLM pass ignores:
+  - The reference/bibliography section (truncated before chunking)
+  - Chunks with no dataset signal keywords (pre-LLM gate)
+  - Any name already seen in a previous chunk (dedup by lowercase name)
+  - Names that fail the false-positive filter (see above)
+
+
+MODELS USED
+-----------
+The LLM backend is selected automatically at runtime in this order:
+
+  1. Azure OpenAI (if AZURE_OPENAI_KEY + AZURE_OPENAI_ENDPOINT are set)
+       Deployment: AZURE_OPENAI_DEPLOYMENT env var (default: gpt-4.1-mini)
+       API version: AZURE_OPENAI_API_VERSION (default: 2025-04-01-preview)
+       Cost: ~$0.40/1M input tokens, $1.60/1M output tokens
+
+  2. OpenAI (if OPENAI_API_KEY is set)
+       Model: gpt-4o-mini
+       Cost: ~$0.15/1M input tokens, $0.60/1M output tokens
+
+  3. Ollama — local fallback (no API key required, no cost)
+       Preferred model order: mistral:latest → mistral:7b →
+         llama3:latest → qwen2.5:7b → gemma3:12b
+       Auto-detects which models are installed via the Ollama
+       /api/tags endpoint. Uses the first available match.
+       Timeout: 240 seconds per chunk.
+       Note: llama3 wraps JSON in prose — handled by the 4-layer
+       JSON parser. Ollama may time out on large/complex chunks.
+
+  If no backend is available, the LLM pass is skipped entirely
+  and only the regex results are returned.
+
+
+FALLBACK BEHAVIOUR SUMMARY
+---------------------------
+  No Azure key   → tries OpenAI
+  No OpenAI key  → tries Ollama (local)
+  No Ollama      → skips LLM pass, returns regex-only results
+  LLM JSON error → logs "JSON-err", continues to next chunk
+  LLM timeout    → logs "ERR:HTTPConnectionPool", continues
+  LLM null item  → skipped silently (NoneType guard)
+  Scanned PDF    → warns user, regex still runs on any embedded text
+
+
+DATA REPOSITORY DOI PREFIXES (always kept)
+-------------------------------------------
+  10.1594  PANGAEA
+  10.5281  Zenodo
+  10.7289  NOAA NCEI
+  10.5067  NASA EOSDIS / NSIDC
+  10.18739 Arctic Data Center
+  10.6073  BCO-DMO
+  10.6084  Figshare
+  10.5061  Dryad
+  10.26050 SEANOE
+  10.3334  ORNL DAAC
+  10.5285  BODC
+  10.5441  PANGAEA (alt)
+  10.48670 CMEMS (Copernicus Marine)
+  10.24381 Copernicus Climate Data Store
+  10.5439  ARM facility
+  10.22008 GEUS / Greenland data portals
+  10.7265  NSIDC (alt)
