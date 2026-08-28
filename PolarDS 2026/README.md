@@ -26,7 +26,6 @@ Built with Streamlit, Neo4j, Ollama, causal-learn, tigramite, lingam, and PyTorc
 - [Citation](#citation)
 - [Authors](#authors)
 - [Acknowledgments](#acknowledgments)
-- [Future Enhancements](#future-enhancements)
 - [Final Notes](#final-notes)
 
 ---
