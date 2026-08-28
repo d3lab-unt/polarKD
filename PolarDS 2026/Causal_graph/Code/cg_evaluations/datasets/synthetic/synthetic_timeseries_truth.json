@@ -1,0 +1,47 @@
+[
+  {
+    "cause": "X1",
+    "effect": "X1",
+    "lag": 5
+  },
+  {
+    "cause": "X1",
+    "effect": "X1",
+    "lag": 2
+  },
+  {
+    "cause": "X1",
+    "effect": "X2",
+    "lag": 0
+  },
+  {
+    "cause": "X1",
+    "effect": "X2",
+    "lag": 1
+  },
+  {
+    "cause": "X1",
+    "effect": "X3",
+    "lag": 1
+  },
+  {
+    "cause": "X3",
+    "effect": "X4",
+    "lag": 0
+  },
+  {
+    "cause": "X3",
+    "effect": "X4",
+    "lag": 1
+  },
+  {
+    "cause": "X1",
+    "effect": "X4",
+    "lag": 1
+  },
+  {
+    "cause": "X4",
+    "effect": "X4",
+    "lag": 1
+  }
+]

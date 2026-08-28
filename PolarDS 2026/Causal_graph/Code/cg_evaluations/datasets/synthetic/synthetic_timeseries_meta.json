@@ -1,0 +1,21 @@
+{
+  "name": "synthetic_timeseries_ttcd_dataset1",
+  "kind": "timeseries",
+  "T": 3000,
+  "seed": 42,
+  "max_lag": 5,
+  "columns": [
+    "X1",
+    "X2",
+    "X3",
+    "X4"
+  ],
+  "reference": "Faruque, Ali, Zheng, Wang 2026 (TTCD), arXiv:2605.08111, Appendix C, Dataset-1",
+  "note": "Non-stationary; PCMCI/PCMCI+ assume stationarity, so lower scores here are an expected benchmark property.",
+  "verification": {
+    "no_constant_column": true,
+    "no_nan": true,
+    "rows_ok": true,
+    "pass": true
+  }
+}

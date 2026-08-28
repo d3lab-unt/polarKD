@@ -1,0 +1,11 @@
+method,family,time_s,SHD,F1,FDR,precision,recall,TP,FP,FN,skel_SHD,skel_F1,skel_FDR,skel_precision,skel_recall,n_pred,n_true,directed_SHD,directed_F1,bidirected_marks,metric_type
+PC,IID,1.0,2,0.909,0.0,1.0,0.833,10.0,0.0,2.0,2,0.909,0.0,1.0,0.833,10,12,,,,directed
+FCI,IID,0.0,2,0.909,0.0,1.0,0.833,,,,2,0.909,0.0,1.0,0.833,1,12,11.0,0.154,4.0,skeleton
+CD-NOD,IID,0.0,2,0.909,0.0,1.0,0.833,10.0,0.0,2.0,2,0.909,0.0,1.0,0.833,10,12,,,,directed
+LiNGAM,IID,0.7,0,1.0,0.0,1.0,1.0,12.0,0.0,0.0,0,1.0,0.0,1.0,1.0,12,12,,,,directed
+DAG-GNN,IID,17.8,0,1.0,0.0,1.0,1.0,12.0,0.0,0.0,0,1.0,0.0,1.0,1.0,12,12,,,,directed
+GES,IID,0.0,2,0.909,0.0,1.0,0.833,10.0,0.0,2.0,2,0.909,0.0,1.0,0.833,10,12,,,,directed
+PCMCI,TimeSeries,0.9,0,1.0,0.0,1.0,1.0,4.0,0.0,0.0,0,1.0,0.0,1.0,1.0,4,4,,,,directed
+PCMCI+,TimeSeries,1.6,0,1.0,0.0,1.0,1.0,4.0,0.0,0.0,0,1.0,0.0,1.0,1.0,4,4,,,,directed
+TCDF,TimeSeries,20.6,0,1.0,0.0,1.0,1.0,4.0,0.0,0.0,0,1.0,0.0,1.0,1.0,4,4,,,,directed
+LPCMCI,TimeSeries,2.6,1,0.889,0.2,0.8,1.0,,,,1,0.889,0.2,0.8,1.0,6,4,4.0,0.6,5.0,skeleton

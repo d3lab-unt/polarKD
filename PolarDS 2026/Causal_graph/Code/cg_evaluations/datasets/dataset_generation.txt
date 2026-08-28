@@ -1,0 +1,267 @@
+================================================================================
+CAUSAL-DISCOVERY BENCHMARK DATASETS — GENERATION, PROVENANCE, AND CITATIONS
+================================================================================
+Scope: the four ground-truth datasets used to evaluate the ten
+causal-discovery methods in ../../causal_discovery.py, via
+../evaluate_cg.ipynb (synthetic datasets) and ../evaluate_cg_bench.ipynb
+(benchmark datasets).
+
+Folder structure
+-----------------
+datasets/
+  synthetic/                        self-authored generators (no external
+                                     data dependency beyond numpy/networkx)
+    dataset_generation_synthetic.ipynb
+    synthetic_iid.csv / _truth.json / _meta.json
+    synthetic_timeseries.csv / _truth.json / _meta.json
+  benchmark/                        externally-sourced/ported datasets
+    dataset_generation_benchmark.ipynb
+    sachs.csv / sachs_truth.json / sachs_meta.json
+    nonlinear_confounded.csv / _truth.json / _meta.json
+  dataset_generation.txt            this file
+
+Each generation notebook is self-contained and re-runnable independently:
+running it regenerates its own datasets/{synthetic,benchmark}/ .csv +
+_truth.json + _meta.json files in place. Both notebooks use
+DATASETS_DIR = "." (their own directory) — this must be run from within
+that directory (or via a notebook UI, which uses the notebook's own
+location as the working directory), not from cg_evaluations/ directly.
+
+The two evaluator notebooks (../evaluate_cg.ipynb,
+../evaluate_cg_bench.ipynb) live one level up, in cg_evaluations/, and
+point at these subfolders via DATASETS_DIR = "datasets/synthetic" and
+DATASETS_DIR = "datasets/benchmark" respectively.
+
+
+--------------------------------------------------------------------------------
+1. SYNTHETIC IID  (datasets/synthetic/synthetic_iid.*)
+--------------------------------------------------------------------------------
+Generator: generate_synthetic_iid() in dataset_generation_synthetic.ipynb
+Consumed by: evaluate_cg.ipynb (IID methods: PC, FCI, CD-NOD, LiNGAM,
+DAG-GNN, GES)
+
+What it is: a linear structural equation model (SEM), X = W^T X + eps,
+over a random Erdos-Renyi DAG (8 variables, ~12 edges by default).
+Self-authored (not ported from any single external dataset), but the
+*procedure* follows established practice from the causal-discovery
+literature:
+
+  - Random DAG + linear-Gaussian-or-non-Gaussian SEM generation procedure:
+    Zheng, X., Aragam, B., Ravikumar, P., Xing, E.P. (2018). "DAGs with
+    NO TEARS: Continuous Optimization for Structure Learning." NeurIPS.
+    arXiv:1803.01422.
+  - Same synthetic-data convention reused for DAG-GNN's own benchmarks:
+    Yu, Y., Chen, J., Gao, T., Yu, M. (2019). "DAG-GNN: DAG Structure
+    Learning with Graph Neural Networks." ICML. arXiv:1904.10098.
+  - Non-Gaussian (exponential) noise, per the LiNGAM identifiability
+    result (a linear SEM's direction is identifiable from observational
+    data only when noise is non-Gaussian): Shimizu, S., Hoyer, P.O.,
+    Hyvarinen, A., Kerminen, A. (2006). "A Linear Non-Gaussian Acyclic
+    Model for Causal Discovery." JMLR 7:2003-2030.
+
+Parameters (defaults): d=8, n_rows=1000, edge_density=1.8 (~12 edges),
+noise='exponential', weight_ranges=((-2,-0.5),(0.5,2)) (bounded away from
+zero so weak edges aren't accidentally planted), seed=42.
+
+Verification (built into the generator, re-checked every regeneration):
+acyclic (networkx), no constant column, v-structure count, row count.
+Additionally sanity-checked once via sanity_check_iid() (cell 4): runs
+real PC at N=5000 and confirms it recovers >=80% of the planted skeleton
+— confirms the generator itself produces a learnable, non-degenerate
+structure, not just an internally-consistent one.
+
+
+--------------------------------------------------------------------------------
+2. SYNTHETIC TIMESERIES  (datasets/synthetic/synthetic_timeseries.*)
+--------------------------------------------------------------------------------
+Generator: generate_synthetic_timeseries() in
+dataset_generation_synthetic.ipynb
+Consumed by: evaluate_cg.ipynb (time-series methods: PCMCI, PCMCI+, TCDF,
+LPCMCI)
+
+What it is: "Dataset-1" transcribed verbatim from a published paper's
+appendix — 4 variables, Gaussian noise, two hardcoded sinusoidal
+non-stationarity terms (sin(t/50), sin(t/20)), lagged (1, 2, 5) and
+contemporaneous links, with X1 as an autoregressive common cause of the
+other three.
+
+Citation: Faruque, M.H., Ali, S., Zheng, X., Wang, W. (2026). "TTCD:
+[paper title not otherwise recorded in this repo]." arXiv:2605.08111,
+Appendix C, Dataset-1.
+NOTE: this arXiv ID and author list were transcribed by hand from the
+paper (not independently re-verified against the live arXiv listing at
+the time this file was written) — treat as a pointer to re-check, not a
+guaranteed-correct bibliographic record, if it's ever cited externally.
+
+Parameters: T=3000 (returned rows), burn_in=200 (extra steps generated
+then discarded, letting the recursive system settle before recording),
+seed=42, max_lag=5 (X1 depends on its own lag-5 and lag-2 values).
+
+Known benchmark property (documented in the generator's own meta, not a
+bug): PCMCI/PCMCI+ assume approximate stationarity; this dataset is
+deliberately non-stationary, so expect lower scores from those two
+methods here — that's the point of including it.
+
+
+--------------------------------------------------------------------------------
+3. SACHS  (datasets/benchmark/sachs.*)
+--------------------------------------------------------------------------------
+Generator: generate_sachs() in dataset_generation_benchmark.ipynb
+Consumed by: evaluate_cg_bench.ipynb (IID methods, replacing
+synthetic_iid as the IID benchmark)
+
+What it is: the ONLY real (not synthetic) dataset in this suite — flow
+cytometry measurements of 11 phosphorylated proteins/phospholipids across
+~7466 individual human immune cells, under various stimulatory/inhibitory
+conditions. A canonical, widely-cited benchmark in the causal-discovery
+literature specifically because the consensus signaling network is
+well-established from independent biology, not derived circularly from
+the same data being tested.
+
+Citation: Sachs, K., Perez, O., Pe'er, D., Lauffenburger, D.A., Nolan,
+G.P. (2005). "Causal Protein-Signaling Networks Derived from
+Multiparameter Single-Cell Data." Science, 308(5721), 523-529.
+doi:10.1126/science.1105809
+
+Provenance: loaded directly via the `cdt` (Causal Discovery Toolbox)
+Python package's bundled dataset loader, cdt.data.load_dataset("sachs")
+(cdt/data/loader.py's load_sachs(), reading package-bundled resource
+files cyto_full_data.csv / cyto_full_target.csv — no network access, no
+dependency on any other folder in this repo). Confirmed directly, not
+inferred: calling this loader reproduces this project's earlier prepared
+copy of the same data exactly — same 7466x11 data, same 18-edge
+consensus graph.
+
+Ground truth: cdt.data.load_dataset("sachs") returns the consensus graph
+directly as a networkx.DiGraph (18 directed edges) — no adjacency-matrix
+parsing/orientation convention to get wrong. Cross-checked against the
+well-known Sachs consensus network anyway: e.g. PKC has edges to exactly
+{praf, pmek, P38, pjnk}, matching its documented hub role as an upstream
+regulator of all four in the published network; PKA similarly has 6
+outgoing edges, matching its role as the other major upstream hub.
+
+Known, expected property: real biological data is noisier and less
+cleanly recoverable than any synthetic benchmark in this suite — e.g. PC
+scores F1=0.476 here vs. F1=0.909+ on synthetic_iid. This is a documented,
+expected property of Sachs as a benchmark (real regulatory complexity,
+measurement noise, feedback loops not captured by a DAG), not evidence of
+a bug in any method tested against it.
+
+
+--------------------------------------------------------------------------------
+4. NONLINEAR + CONFOUNDER  (datasets/benchmark/nonlinear_confounded.*)
+--------------------------------------------------------------------------------
+Generator: generate_nonlinear_confounded() in
+dataset_generation_benchmark.ipynb
+Consumed by: evaluate_cg_bench.ipynb (time-series methods: PCMCI,
+PCMCI+, TCDF, LPCMCI, replacing synthetic_timeseries as the time-series
+benchmark)
+
+What it is: an 8-variable, lag-3 nonlinear (sin/cos/cubic/square terms)
+time series with an explicit hidden confounder U (affecting X1 and X8),
+plus per-variable linear trend and seasonality. Ported line-for-line from
+a published, peer-reviewed benchmark generator's source code — not
+self-authored, and not a from-scratch reimplementation of a described
+algorithm; the structural equations and coefficients are copied exactly.
+
+Citation: Ferdous, M.H., Hossain, E., Gani, M.O. (2025). "TimeGraph:
+Synthetic Benchmark Datasets for Robust Time-Series Causal Discovery."
+Proceedings of the 31st ACM SIGKDD Conference on Knowledge Discovery and
+Data Mining V.2 (KDD '25), Toronto, ON, Canada. doi:10.1145/3711896.3737439
+Repository: https://github.com/hferdous/TimeGraph
+Source ported: Codes/c1c.py, get_nonlinear_equations(n_vars=8, max_lag=3)
+and the NonlinearTimeSeriesGenerator class.
+
+Note on authorship overlap: this is the same research group (Ferdous,
+Hossain, Gani at UMBC / Causal AI Lab) whose "Correlation to Causation"
+paper this project's Section 6 (Enhanced SCG) pipeline was evaluated
+against earlier in this project's work — not independently significant to
+this dataset's validity, just worth knowing the benchmark and the
+application domain trace back to the same lab.
+
+Ground truth: extracted by parsing get_nonlinear_equations(8, 3)'s
+returned equation strings for their causal terms (source variable, lag,
+target variable), EXCLUDING the confounder U. Cross-verified (not just
+manually transcribed) against TimeGraph's own extract_causal_links()
+function, run directly from the fetched source against the same
+equations — exact match confirmed, zero differences, before trusting the
+result. 9 true edges:
+  X7->X8 (lag 0), X6->X7 (lag 1), X5->X6 (lag 0), X4->X5 (lag 1),
+  X1->X4 (lag 2), X4->X3 (lag 0), X2->X3 (lag 3), X3->X2 (lag 1),
+  X2->X1 (lag 0)
+
+Confounder design (deliberate, documented in the generator's own
+docstring/meta): U affects X1 (coefficient 0.5) and X8 (coefficient
+0.35), both at lag 0. U IS present as a column in the saved CSV for
+diagnostic transparency, but callers must EXCLUDE it from the columns
+passed to run_*() — see evaluate_cg_bench.ipynb's dataset-loading cell,
+which does `[c for c in numeric_columns(ts_df) if c not in ("U", "time")]`
+— so the confounding stays genuinely hidden from the discovery methods,
+matching this project's existing LPCMCI hidden-confounder benchmark
+convention (see ../../info.txt). A fabricated direct X1<->X8 edge from a
+non-PAG method (PCMCI, PCMCI+, TCDF) is an EXPECTED artifact of this
+design, confirmed empirically (PCMCI produced both X1->X8 and X8->X1 as
+spurious edges when tested), not a bug in causal_discovery.py.
+
+Two things verified directly against the reference source rather than
+assumed from TimeGraph's own README, because they turned out to disagree:
+
+  a) Irregular sampling: the README describes this category ("C1C") as
+     irregular-sampling. The actual generator code uses a fully regular
+     integer time index (np.arange(n_points)) — no irregular-sampling
+     logic exists anywhere in Codes/c1c.py. Genuinely irregular sampling
+     DOES exist elsewhere in the TimeGraph repo (Codes/a2c.py, verified
+     directly — implements exponential-gap timestamps + nearest-lag
+     matching) but only for that repo's LINEAR equation set, not this
+     nonlinear one. Reproduced here as regular, matching the actual code,
+     not the README.
+
+  b) Processing-order quirk: equations are evaluated in a fixed order
+     (X8, X7, X6, X5, X4, X3, X2, X1), matching the reference exactly.
+     Verified directly by tracing the array indexing (not inferred): two
+     of the four contemporaneous (lag-0) edges — X7->X8 and X5->X6 — have
+     their source read as exactly 0.0 by the target's equation, since row
+     t starts as zeros and the source is processed LATER in this fixed
+     order; that specific nonlinear term is dead code every timestep. The
+     other two contemporaneous edges (X4->X3, X2->X1) don't have this
+     problem, since X4 and X2 are processed before X3 and X1
+     respectively. This does NOT mean X7/X8 or X5/X6 end up statistically
+     independent — empirically they still show real correlation (~0.58
+     after removing the shared trend, vs. ~0.12-0.14 for the unaffected
+     pairs), because they're connected through other paths in this
+     recursive 8-variable network (e.g. X7's own real dependency on
+     X6[t-1]). The quirk means the specific direct nonlinear term the
+     equation names is inert, not that the claimed edge is undetectable.
+     Preserved intentionally, not "fixed", because the actual benchmark
+     data already evaluated in this project (both the originally
+     downloaded GitHub CSV and this locally-generated equivalent) was
+     produced under this exact order — silently correcting it would make
+     future regenerations diverge from what was actually tested.
+
+Reproducibility caveat: this locally-generated CSV is NOT byte-identical
+to TimeGraph's own published CSV (downloadable from
+Datasets/C1C/8%20Variable/lag%203/nonlinear_ts_with_confounder_n3000_vars8_lag3.csv
+in the repo above) — this port uses numpy's modern Generator API
+(np.random.default_rng) rather than the reference's legacy global
+np.random.seed/np.random.normal calls, so the specific noise draws differ
+even at the same seed=42. Verified statistically equivalent, not
+identical: same shape/columns, per-column means/stds matching closely
+(e.g. X2: 15.0009 vs 15.0019), and a full 8x8 correlation matrix matching
+to within 0.0001 — i.e. same causal structure and noise characteristics,
+different specific realization.
+
+
+--------------------------------------------------------------------------------
+KNOWN GAPS / NOT YET DONE
+--------------------------------------------------------------------------------
+- No machine-readable ground truth ships with the original TimeGraph
+  repo's pre-generated datasets for ANY of its other categories (A2,
+  A2C, B1, B1C, etc.) — only .png graph images. If a future dataset from
+  that repo is added here, its ground truth will need the same
+  fetch-the-generator-source-and-cross-verify treatment used for C1C
+  above, not be read off an image.
+- TimeGraph's irregular-sampling generators (a2.py/a2c.py, genuinely
+  irregular but linear-only) were identified as a candidate for a future
+  "irregular + confounder + nonlinear" combined benchmark, since no
+  single existing TimeGraph folder combines all three properties — not
+  built, deferred pending explicit request.

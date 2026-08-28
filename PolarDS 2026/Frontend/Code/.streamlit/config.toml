@@ -1,0 +1,27 @@
+[server]
+# Disabled because this app is accessed through a port-forwarding proxy
+# (VS Code remote), which puts the upload request on a different origin
+# than the server expects — causing file_uploader POSTs to fail with
+# "AxiosError: Request failed with status code 400". Safe here since the
+# server is bound to localhost only, not publicly exposed.
+enableXsrfProtection = false
+enableCORS = false
+
+[theme]
+# Primary color for interactive elements
+primaryColor = "#007bff"
+
+# Background color for the main content area
+backgroundColor = "#ffffff"
+
+# Background color for sidebar and most interactive widgets
+secondaryBackgroundColor = "#f8f9fa"
+
+# Color used for almost all text
+textColor = "#262730"
+
+# Font family for all text in the app
+font = "sans serif"
+
+# Base theme - either "light" or "dark"
+base = "light"

@@ -1,0 +1,74 @@
+[
+  {
+    "cause": "PIP2",
+    "effect": "PKC"
+  },
+  {
+    "cause": "PIP2",
+    "effect": "PIP3"
+  },
+  {
+    "cause": "PKC",
+    "effect": "pjnk"
+  },
+  {
+    "cause": "PKC",
+    "effect": "P38"
+  },
+  {
+    "cause": "PKC",
+    "effect": "praf"
+  },
+  {
+    "cause": "PKC",
+    "effect": "pmek"
+  },
+  {
+    "cause": "plcg",
+    "effect": "PIP2"
+  },
+  {
+    "cause": "plcg",
+    "effect": "PKC"
+  },
+  {
+    "cause": "PIP3",
+    "effect": "plcg"
+  },
+  {
+    "cause": "PIP3",
+    "effect": "pakts473"
+  },
+  {
+    "cause": "PKA",
+    "effect": "P38"
+  },
+  {
+    "cause": "PKA",
+    "effect": "praf"
+  },
+  {
+    "cause": "PKA",
+    "effect": "pakts473"
+  },
+  {
+    "cause": "PKA",
+    "effect": "pmek"
+  },
+  {
+    "cause": "PKA",
+    "effect": "p44/42"
+  },
+  {
+    "cause": "PKA",
+    "effect": "pjnk"
+  },
+  {
+    "cause": "praf",
+    "effect": "pmek"
+  },
+  {
+    "cause": "pmek",
+    "effect": "p44/42"
+  }
+]

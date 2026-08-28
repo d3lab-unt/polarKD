@@ -1,0 +1,35 @@
+{
+  "name": "nonlinear_confounded",
+  "kind": "timeseries_nonlinear_confounded",
+  "source": "Ported from TimeGraph (Ferdous, Hossain, Gani -- KDD 2025), Codes/c1c.py",
+  "d": 8,
+  "n_rows": 3000,
+  "max_lag": 3,
+  "seed": 42,
+  "columns_observed_by_methods": [
+    "X1",
+    "X2",
+    "X3",
+    "X4",
+    "X5",
+    "X6",
+    "X7",
+    "X8"
+  ],
+  "confounder_column": "U",
+  "note_irregular_sampling": "TimeGraph's README calls this category ('C1C') irregular-sampling, but Codes/c1c.py's actual generator uses a fully regular time index -- reproduced faithfully here (regular), verified against the source rather than assumed from the README.",
+  "note_processing_order": "Equations evaluated in a fixed order (X8,X7,X6,X5,X4,X3,X2,X1), matching the reference exactly. X7->X8 and X5->X6 are contemporaneous edges whose source is processed AFTER the target in this order, so the target's equation reads exactly 0.0 for that source that timestep -- verified directly by tracing the array indexing, not inferred. This makes that one direct nonlinear term dead code every timestep, but does NOT make the pair uncorrelated: X7/X8 and X5/X6 still show real correlation (~0.58 de-trended) via other paths in the network (e.g. X7's own real dependency on X6[t-1]). Reference-generator quirk, preserved intentionally rather than corrected (see function docstring).",
+  "confounder_design": "U affects X1 (coef 0.5) and X8 (coef 0.35), both lag 0. U is present as a column for diagnostics but true_edges excludes any U-involving edge; pass only the X* columns to run_*() so the confounding stays hidden. A fabricated direct X1<->X8 edge from a non-PAG method is expected, not a bug.",
+  "nonlinearity": "sin/cos (bounded periodic) + power2/power3 terms, plus additive per-variable linear trend and seasonality.",
+  "verification": {
+    "no_constant_column": true,
+    "no_nan": true,
+    "rows_ok": true,
+    "n_true_edges": 9,
+    "confounded_pair": [
+      "X1",
+      "X8"
+    ],
+    "pass": true
+  }
+}

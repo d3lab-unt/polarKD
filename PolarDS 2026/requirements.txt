@@ -1,0 +1,52 @@
+# Knowledge_graph pipeline (PDF upload, keyword/relation extraction, Neo4j, Q&A)
+streamlit==1.32.2
+pdfplumber==0.10.3
+nltk==3.8.1
+spacy==3.7.4
+scikit-learn==1.4.2
+keybert==0.8.3
+yake==0.4.8
+pyvis==0.3.2
+neo4j==5.19.0
+fuzzywuzzy==0.18.0
+python-Levenshtein==0.23.0
+wordninja==2.0.0
+ollama==0.1.7
+pandas==2.2.2
+numpy==1.26.4
+networkx==3.2.1
+python-dotenv==1.0.0
+ragas>=0.1.0
+openai==2.37.0
+requests==2.32.3
+tiktoken==0.13.0
+rank-bm25==0.2.2
+
+# Causal_graph pipeline (statistical causal discovery — PC, FCI, CD-NOD, LiNGAM,
+# PCMCI, PCMCI+, TCDF, DAG-GNN, LPCMCI, GES)
+causal-learn==0.1.4.7
+tigramite==5.2.10.1
+lingam==1.12.2
+
+# cg_evaluations (benchmark notebooks: dataset generation + result plotting)
+cdt==0.6.0
+matplotlib==3.11.0
+
+# AI_Chatbot (LangChain + FAISS document Q&A)
+langchain>=0.1.14
+langchain-core>=0.1.37
+langchain-community
+langchain-huggingface
+langchain-ollama
+faiss-cpu
+pypdf>=3.17.4
+PyMuPDF  # for 'fitz' module
+unstructured
+beautifulsoup4
+tqdm
+
+# Shared across pipelines (version reconciled to the stricter of the two
+# original constraints where they overlapped)
+sentence-transformers==2.6.1
+transformers>=4.36.2
+torch>=2.0.0

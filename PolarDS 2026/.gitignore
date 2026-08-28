@@ -1,0 +1,110 @@
+# Environment variables - CONTAINS API KEYS
+.env
+.env.*
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+kg_pipeline.log
+
+# Database exports
+*.csv
+*.json
+!config*.json
+# Exception: benchmark/ground-truth data + results the causal-graph
+# evaluation code depends on
+!Causal_graph/Code/cg_evaluations/**/*.csv
+!Causal_graph/Code/cg_evaluations/**/*.json
+
+# Neo4j local
+neo4j/
+
+# Generated graphs / HTML
+graph.html
+*.html
+
+# Project specific
+*.pdf
+# Exception: the AI_Chatbot demo's sample docs
+!AI_Chatbot/docs/*.pdf
+extracted_relations.csv
+extracted_relations.json
+temp_*.pdf
+llm_comparison/
+qa_test_results_*.txt
+test_output.log
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+
+# LaTeX (future-proofing, in case paper sources come back)
+*.aux
+*.bbl
+*.blg
+*.out
+*.toc
+*.lof
+*.lot
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.xdv
+*.bcf
+*.run.xml
+*.nav
+*.snm
+*.vrb
+auto/
+
+# Personal / institutional — never commit
+.streamlit/secrets.toml
+*credentials*
+*secret*
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+*_history
+.bash_history

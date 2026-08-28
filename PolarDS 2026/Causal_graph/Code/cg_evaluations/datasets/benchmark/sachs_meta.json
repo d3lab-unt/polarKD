@@ -1,0 +1,29 @@
+{
+  "name": "sachs",
+  "kind": "iid_real",
+  "d": 11,
+  "n_rows": 7466,
+  "columns": [
+    "praf",
+    "pmek",
+    "plcg",
+    "PIP2",
+    "PIP3",
+    "p44/42",
+    "pakts473",
+    "PKA",
+    "PKC",
+    "P38",
+    "pjnk"
+  ],
+  "n_edges": 18,
+  "reference": "Sachs et al. (2005), 'Causal Protein-Signaling Networks Derived from Multiparameter Single-Cell Data', Science 308(5721):523-529, doi:10.1126/science.1105809. Data + consensus graph loaded via cdt.data.load_dataset('sachs') (Causal Discovery Toolbox package).",
+  "note": "A REAL (not synthetic) biological dataset -- expect meaningfully lower scores here than on the synthetic benchmarks. That is a known, published property of Sachs as a causal-discovery benchmark (real biological noise, unmodeled regulatory mechanisms), not a bug in any method tested against it.",
+  "verification": {
+    "no_constant_column": true,
+    "no_nan": true,
+    "rows_ok": true,
+    "n_true_edges": 18,
+    "pass": true
+  }
+}

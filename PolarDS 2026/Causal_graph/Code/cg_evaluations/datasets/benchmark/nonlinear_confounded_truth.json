@@ -1,0 +1,56 @@
+[
+  {
+    "cause": "X7",
+    "effect": "X8",
+    "lag": 0,
+    "nonlinearity": "sin"
+  },
+  {
+    "cause": "X6",
+    "effect": "X7",
+    "lag": 1,
+    "nonlinearity": "cos"
+  },
+  {
+    "cause": "X5",
+    "effect": "X6",
+    "lag": 0,
+    "nonlinearity": "sin"
+  },
+  {
+    "cause": "X4",
+    "effect": "X5",
+    "lag": 1,
+    "nonlinearity": "cos"
+  },
+  {
+    "cause": "X1",
+    "effect": "X4",
+    "lag": 2,
+    "nonlinearity": "cos"
+  },
+  {
+    "cause": "X4",
+    "effect": "X3",
+    "lag": 0,
+    "nonlinearity": "power2"
+  },
+  {
+    "cause": "X2",
+    "effect": "X3",
+    "lag": 3,
+    "nonlinearity": "cos"
+  },
+  {
+    "cause": "X3",
+    "effect": "X2",
+    "lag": 1,
+    "nonlinearity": "sin"
+  },
+  {
+    "cause": "X2",
+    "effect": "X1",
+    "lag": 0,
+    "nonlinearity": "power3"
+  }
+]

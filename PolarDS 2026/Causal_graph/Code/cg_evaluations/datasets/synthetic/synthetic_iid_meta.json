@@ -1,0 +1,32 @@
+{
+  "name": "synthetic_iid",
+  "kind": "iid",
+  "d": 8,
+  "n_rows": 1000,
+  "noise": "exponential",
+  "seed": 42,
+  "columns": [
+    "X1",
+    "X2",
+    "X3",
+    "X4",
+    "X5",
+    "X6",
+    "X7",
+    "X8"
+  ],
+  "n_edges": 12,
+  "edge_density": 1.8,
+  "edge_probability": 0.5142857142857143,
+  "expected_edges": 14.4,
+  "reference": "Zheng et al. 2018 (NOTEARS); Yu et al. 2019 (DAG-GNN); non-Gaussian noise per Shimizu et al. 2006 (LiNGAM)",
+  "verification": {
+    "acyclic": true,
+    "no_constant_column": true,
+    "no_nan": true,
+    "finite_values": true,
+    "n_v_structures": 9,
+    "rows_ok": true,
+    "pass": true
+  }
+}
