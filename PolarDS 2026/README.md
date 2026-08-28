@@ -1,6 +1,6 @@
 # PolarKD: LLM-based Causal Discovery from Scientific Literature
 
-Knowledge graphs built from scientific literature capture how concepts are *related* — but their edges are semantic, not causal. This toolkit transforms literature-derived knowledge graphs into causally meaningful structures: an LLM filters knowledge-graph nodes down to a vetted set of candidate causal variables, and a suite of ten statistical causal-discovery methods, applied to real observational data from the same domain, independently recovers the causal structure among them.
+Knowledge graphs built from scientific literature capture how concepts are *related*, but their edges are semantic, not causal. This toolkit transforms literature-derived knowledge graphs into causally meaningful structures: an LLM filters knowledge-graph nodes down to a vetted set of candidate causal variables, and a suite of ten statistical causal-discovery methods, applied to real observational data from the same domain, independently recovers the causal structure among them.
 
 Built with Streamlit, Neo4j, Ollama, causal-learn, tigramite, lingam, and PyTorch.
 
@@ -45,7 +45,7 @@ Knowledge graphs (KGs) built from scientific literature capture how concepts are
 
 ## Features
 
-### Causal Discovery Engine (the core contribution)
+### Causal Discovery Engine
 
 - LLM-based causal-variable filtering: a closed-whitelist prompt with explicit correlation-vs-causation instructions, applied to KG edges plus dataset-described variables
 - Two-pass validation: hallucination rejection (only whitelist-verbatim names accepted), self-loop removal, low-confidence pruning, plus an independent embedding-based confidence score to complement the LLM's own self-reported (often-inflated) confidence
@@ -159,7 +159,6 @@ streamlit run frontend_light_cg.py --server.address localhost --server.port 8501
 
 ```bash
 PolarDS 2026/
-├── info.txt                 # Full engineering documentation (all 4 app steps)
 ├── requirements.txt          # Single dependency file for the whole repo
 ├── config/
 │   └── .env                    # Neo4j + OpenAI credentials (see above)
@@ -176,17 +175,11 @@ PolarDS 2026/
         └── frontend_light_cg.py
 ```
 
-See `info.txt` at the repo root for the complete, per-step documentation of every file.
-
----
-
 ## How It Works
-
-The pipeline follows the three-stage architecture described in the accompanying paper (see [Citation](#citation)):
 
 ### Step 1: Knowledge Graph Extraction
 
-The workflow begins by extracting a Knowledge Graph (KG) from the selected scientific literature. The system processes the uploaded papers, identifies relevant entities and relationships, and stores the extracted information as a structured graph. Dataset descriptions and their reported variables are also collected as an additional source of candidate variables for downstream causal analysis.
+The workflow begins by extracting a Knowledge Graph (KG) from the selected scientific literature. The system processes the uploaded papers, identifies relevant entities and relationships, and stores the extracted information as a structured graph. Dataset descriptions and their reported variables are also collected as an additional source of candidate variables for downstream causal analysis. This stages used the polarKD pipeline.
 
 <p align="center">
   <img src="Frontend/images/step01.png" width="750">
@@ -218,21 +211,9 @@ The system automatically inspects the uploaded data and determines whether a val
 
 ---
 
-### Step 4: Variable Mapping
+### Step 4: Select Causal Discovery Models
 
-The literature-derived causal variables are aligned with columns in the uploaded dataset. The system first uses curated abbreviation and naming rules and then applies guarded fuzzy matching when necessary.
-
-Each literature variable is mapped to at most one dataset column. The proposed mappings are displayed to the user for confirmation or manual correction before causal discovery is performed.
-
-<p align="center">
-  <img src="Frontend/images/step04.png" width="750">
-</p>
-
----
-
-### Step 5: Select Causal Discovery Models
-
-After confirming the variable mappings, the user selects one or more statistical causal discovery methods.
+After confirming the uploading datasets, the user selects one or more statistical causal discovery methods to generate statistical causal discovery based on that datasets.
 
 For non-temporal or i.i.d. data, the framework supports:
 
@@ -253,9 +234,20 @@ For datasets containing a valid time column, the framework additionally supports
 The LLM determines the literature-grounded variable scope, while these causal discovery algorithms infer relationships independently from the observational data.
 
 <p align="center">
-  <img src="Frontend/images/step05.png" width="750">
+  <img src="Frontend/images/step04.png" width="750">
 </p>
 
+---
+
+### Step 5: Variable Mapping
+
+The literature-derived causal variables are aligned with columns in the uploaded dataset. The system first uses curated abbreviation and naming rules and then applies guarded fuzzy matching when necessary.
+
+Each literature variable is mapped to at most one dataset column. The proposed mappings are displayed to the user for confirmation or manual correction before causal discovery is performed.
+
+<p align="center">
+  <img src="Frontend/images/step05.png" width="750">
+</p>
 ---
 
 ### Step 6: Final Causal Graph
@@ -285,11 +277,11 @@ The final Structural Causal Graph can then be visualized and compared across dif
 | TCDF | Neural | Time series | Depthwise dilated-causal CNN + attention + permutation-importance validation |
 | LPCMCI | Constraint-based | Time series | Latent-confounder-aware — the time-series counterpart to FCI |
 
-Full academic citations, algorithm explanations, and hyperparameter justifications for every method live directly in `Causal_graph/Code/causal_discovery.py`'s own Algorithm Glossary and per-method docstrings — the code is self-documenting.
+Full academic citations, algorithm explanations, and hyperparameter justifications for every method live directly in `Causal_graph/Code/causal_discovery.py`'s own Algorithm Glossary and per-method docstrings,  the code is self-documenting.
 
 ---
 
-## Results
+## Causal Discovery Methods Validation
 
 Evaluated on two synthetic benchmarks with known ground-truth causal structure (an 8-variable i.i.d. SEM, 12 true edges; a 4-variable nonstationary time series with contemporaneous and lagged dependencies), scored by Structural Hamming Distance (SHD), F1, and False Discovery Rate (FDR):
 
@@ -333,7 +325,7 @@ Four steps in one app: Upload, Document Q&A, Knowledge Graph, and Causal Graph �
 
 ## Example Workflow
 
-Upload a PDF → Generate Knowledge Graph → Generate Structural Causal Graph → LLM filters KG edges into vetted causal variables → upload a dataset from the same study → confirm variable-to-column mapping → select causal-discovery methods → view the interactive causal graph → export as CSV.
+Upload a PDF → Generate Knowledge Graph → Generate Structural Causal Graph → LLM filters KG edges into vetted causal variables → upload a dataset from the same study → select causal-discovery methods →  confirm variable-to-column mapping → view the interactive causal graph → export as CSV.
 
 ---
 
@@ -364,4 +356,4 @@ This work is supported by NSF grant HDR Institute: Harnessing Data and Model Rev
 
 ## Final Notes
 
-All causal-relation extraction, knowledge-graph construction, and Q&A run entirely locally through Ollama — no data leaves the machine unless GPT-4 dataset extraction is explicitly enabled. The literature-derived and data-driven stages are independently verifiable: the LLM constrains which variables matter, and statistical causal discovery — evaluated here against known ground truth on two synthetic benchmarks and demonstrated end-to-end on real polar-science literature — provides the empirical evidence for how they're connected.
+All causal-relation extraction, knowledge-graph construction, and question answering are performed locally through Ollama, ensuring that no data leave the user’s machine unless GPT-4-based dataset extraction is explicitly enabled. The literature-derived and data-driven components are independently verifiable: the LLM determines the relevant variable scope, while statistical causal discovery infers relationships from observational data. We evaluate the causal discovery stage against known ground-truth structures on two synthetic benchmarks and further demonstrate the complete pipeline end-to-end using real polar-science literature and associated datasets.
