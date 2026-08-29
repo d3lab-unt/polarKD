@@ -13,10 +13,11 @@ Built with Streamlit, Neo4j, Ollama, causal-learn, tigramite, lingam, and PyTorc
   - [1. Clone the Repository](#1-clone-the-repository)
   - [2. Create a Virtual Environment](#2-create-a-virtual-environment)
   - [3. Install Dependencies](#3-install-dependencies)
-  - [4. Configure Environment Variables](#4-configure-environment-variables)
-  - [5. Install and Run Ollama](#5-install-and-run-ollama)
-  - [6. Setup Neo4j Aura](#6-setup-neo4j-aura)
-  - [7. Run the Streamlit App](#7-run-the-streamlit-app)
+  - [4. Download NLP Models/Data](#4-download-nlp-modelsdata)
+  - [5. Configure Environment Variables](#5-configure-environment-variables)
+  - [6. Install and Run Ollama](#6-install-and-run-ollama)
+  - [7. Setup Neo4j Aura](#7-setup-neo4j-aura)
+  - [8. Run the Streamlit App](#8-run-the-streamlit-app)
 - [Project Folder Structure](#project-folder-structure)
 - [How It Works](#how-it-works)
 - [The Ten Causal-Discovery Methods](#the-ten-causal-discovery-methods)
@@ -111,7 +112,25 @@ source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 4. Configure Environment Variables
+### 4. Download NLP Models/Data
+
+`pip install`-ing spaCy and NLTK does not fetch the actual language models/data those libraries need at runtime:
+
+```bash
+pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl
+
+python3 -c "
+import nltk
+nltk.download('punkt')
+nltk.download('punkt_tab')
+nltk.download('wordnet')
+nltk.download('stopwords')
+"
+```
+
+### 5. Configure Environment Variables
+
+`config/.env` is git-ignored on purpose — it is never committed, so you must create it yourself on every fresh clone/machine.
 
 Create a `.env` file inside the `config/` directory at the repo root:
 
@@ -128,7 +147,21 @@ NEO4J_DATABASE=neo4j
 
 If `OPENAI_API_KEY` is not provided, the system simply skips GPT-4 dataset extraction.
 
-### 5. Install and Run Ollama
+### 6. Install and Run Ollama
+
+Install Ollama if you don't already have it:
+
+```bash
+# Linux — installs the binary, creates a systemd service, and starts it automatically
+curl -fsSL https://ollama.com/install.sh | sh
+
+# Windows (PowerShell)
+irm https://ollama.com/install.ps1 | iex
+```
+
+Or download an installer directly from https://ollama.com/download. On Windows, Ollama runs as a background app after install (system tray), no separate "start the server" step needed there.
+
+Then pull the models this app expects and start the server (skip `ollama serve` if it's already running as a service):
 
 ```bash
 ollama pull llama3:latest
@@ -138,14 +171,13 @@ ollama pull gemma3:12b
 ollama serve
 ```
 
-### 6. Setup Neo4j Aura
+### 7. Setup Neo4j Aura
 
 1. Create a free Neo4j Aura instance at https://console.neo4j.io
-2. Wait ~60 seconds for the instance to become available
-3. Copy the connection credentials from the Python driver section
-4. Add them to `config/.env`
+2. Copy the connection credentials from the Python driver section
+3. Add them to `config/.env`
 
-### 7. Run the Streamlit App
+### 8. Run the Streamlit App
 
 ```bash
 cd Frontend/Code
