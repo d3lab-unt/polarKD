@@ -39,7 +39,7 @@ Knowledge graphs (KGs) built from scientific literature capture how concepts are
 *Overview of the proposed framework.*
 
 ![Landing page](Frontend/images/01_landing.png)
-*The toolkit's landing view — PDF ingestion, Q&A, Knowledge Graph, and Causal Graph in a single workspace.*
+*The toolkit's landing view: PDF ingestion, Q&A, Knowledge Graph, and Causal Graph in a single workspace.*
 
 ---
 
@@ -67,9 +67,9 @@ Knowledge graphs (KGs) built from scientific literature capture how concepts are
 
 ### Privacy and Performance
 
-- All LLM calls (relation extraction, causal filtering, Q&A) run locally through Ollama — no data leaves the machine
-- GPT-4o-mini dataset extraction is optional and explicitly opt-in
-- Causal-learn/tigramite/lingam/torch are imported lazily per method, so a missing or broken package disables only that one method
+- All LLM-based tasks, including relation extraction, causal filtering, and Q&A, are executed locally through Ollama, ensuring that no data leaves the local machine.
+- GPT-4o-mini-based dataset extraction is optional and is only used when explicitly enabled.
+- Dependencies such as `causal-learn`, `tigramite`, `lingam`, and `torch` are loaded only when their corresponding methods are used. Therefore, if one of these packages is missing or incompatible, only the associated method is disabled, while the rest of the framework remains functional.
 
 ---
 
@@ -216,7 +216,6 @@ The workflow begins by extracting a Knowledge Graph (KG) from the selected scien
   <img src="Frontend/images/step01.png" width="750">
 </p>
 
----
 
 ### Step 2: Causal Variable Extraction
 
@@ -228,7 +227,6 @@ Relations containing hallucinated variables, self-loops, or low-confidence predi
   <img src="Frontend/images/step02.png" width="750">
 </p>
 
----
 
 ### Step 3: Dataset Integration
 
@@ -240,7 +238,6 @@ The system automatically inspects the uploaded data and determines whether a val
   <img src="Frontend/images/step03.png" width="750">
 </p>
 
----
 
 ### Step 4: Select Causal Discovery Models
 
@@ -268,8 +265,6 @@ The LLM determines the literature-grounded variable scope, while these causal di
   <img src="Frontend/images/step04.png" width="750">
 </p>
 
----
-
 ### Step 5: Variable Mapping
 
 The literature-derived causal variables are aligned with columns in the uploaded dataset. The system first uses curated abbreviation and naming rules and then applies guarded fuzzy matching when necessary.
@@ -279,7 +274,6 @@ Each literature variable is mapped to at most one dataset column. The proposed m
 <p align="center">
   <img src="Frontend/images/step05.png" width="750">
 </p>
----
 
 ### Step 6: Final Causal Graph
 
