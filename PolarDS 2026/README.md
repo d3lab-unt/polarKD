@@ -1,4 +1,4 @@
-# PolarDS: LLM-based Causal Discovery from Scientific Literature
+# PolarKD: LLM-based Causal Discovery from Scientific Literature
 
 Knowledge graphs built from scientific literature capture how concepts are *related*, but their edges are semantic, not causal. This toolkit transforms literature-derived knowledge graphs into causally meaningful structures: an LLM filters knowledge-graph nodes down to a vetted set of candidate causal variables, and a suite of ten statistical causal-discovery methods, applied to real observational data from the same domain, independently recovers the causal structure among them.
 
