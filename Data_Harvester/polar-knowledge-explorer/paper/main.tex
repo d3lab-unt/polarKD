@@ -1,0 +1,393 @@
+%% ACM SIGSPATIAL 2026 Demo Paper
+%% Format: sigconf, two-column, max 4 pages including references
+%% Single-blind review: author names and affiliations included
+\documentclass[sigconf]{acmart}
+
+\usepackage{enumitem}
+\usepackage{booktabs}
+
+\setcopyright{none}
+\acmConference[SIGSPATIAL '26]{34th ACM SIGSPATIAL International Conference
+  on Advances in Geographic Information Systems}{November 2026}{Atlanta, GA, USA}
+\acmYear{2026}
+\acmDOI{}
+\acmISBN{}
+
+\begin{CCSXML}
+<ccs2012>
+   <concept>
+       <concept_id>10002951.10003227.10003236</concept_id>
+       <concept_desc>Information systems~Information extraction</concept_desc>
+       <concept_significance>500</concept_significance>
+   </concept>
+   <concept>
+       <concept_id>10010405.10010469.10010474</concept_id>
+       <concept_desc>Applied computing~Environmental sciences</concept_desc>
+       <concept_significance>300</concept_significance>
+   </concept>
+   <concept>
+       <concept_id>10002951.10003227.10003351</concept_id>
+       <concept_desc>Information systems~Document structure</concept_desc>
+       <concept_significance>100</concept_significance>
+   </concept>
+</ccs2012>
+\end{CCSXML}
+
+\ccsdesc[500]{Information systems~Information extraction}
+\ccsdesc[300]{Applied computing~Environmental sciences}
+\ccsdesc[100]{Information systems~Document structure}
+
+%% -----------------------------------------------------------------------
+\begin{document}
+
+\title{PolarKD Dataset Harvester: Automated Extraction of Geospatial Dataset
+  References from Polar Science Literature [Demo]}
+
+\author{Gowtham Vuppaladhadiam}
+\affiliation{%
+  \institution{University of North Texas}
+  \city{Denton}
+  \state{TX}
+  \country{USA}
+}
+\email{gowthamvuppaladhadiam@my.unt.edu}
+
+\author{Ajith Kumar Dugyala}
+\affiliation{%
+  \institution{University of North Texas}
+  \city{Denton}
+  \state{TX}
+  \country{USA}
+}
+\email{AjithKumarDugyala@my.unt.edu}
+
+\author{Sahara Ali}
+\affiliation{%
+  \institution{University of North Texas}
+  \city{Denton}
+  \state{TX}
+  \country{USA}
+}
+\email{sahara.ali@unt.edu}
+
+%% -----------------------------------------------------------------------
+\begin{abstract}
+Reanalysis products, satellite records, and in-situ observations are cited in
+polar science papers in many ways: sometimes with a DOI, sometimes with a
+repository accession number, and often just by name with no identifier at all.
+Finding all of them automatically is harder than it sounds. We built the PolarKD
+Dataset Harvester, a two-pass extraction pipeline that pulls structured dataset
+references out of polar science PDFs. The first pass uses deterministic regular
+expressions to catch six types of explicit identifiers: URLs, DOIs, PANGAEA
+accessions, Zenodo records, NSIDC accessions, and named satellite and reanalysis
+products. The second pass sends text chunks to a language model to catch datasets
+mentioned by name only, using a signal-based pre-filter to avoid unnecessary API
+calls. The system runs on Azure OpenAI, OpenAI, or a local Ollama instance, and
+falls back automatically when a backend is unavailable. At the demo, attendees
+upload their own papers and watch the extraction run live inside the PolarKD
+knowledge graph platform.
+\end{abstract}
+
+\keywords{dataset extraction, polar science, geospatial data, scientific literature
+  mining, knowledge graph, PDF parsing}
+
+\maketitle
+
+%% -----------------------------------------------------------------------
+\section{Introduction}
+
+Reproducibility in polar science depends on knowing which datasets a paper actually
+used. A single study might draw on ERA5 reanalysis, MODIS sea ice concentration,
+Argo float profiles, and CMIP6 model output at the same time. Tracking those
+dependencies manually across hundreds of papers is not practical. Building a tool
+that does it automatically is harder than it first appears.
+
+The core problem is that the same dataset can show up in many different forms. ERA5,
+for example, might appear as the product name ``ERA5,'' as the DOI
+10.24381/cds.adbb2d47, as a URL to the Copernicus Climate Data Store, or buried
+inside a Data Availability statement with no identifier at all \cite{era5}. An
+extraction tool needs to handle all of those cases without generating too many false
+positives. Instrument model names, journal DOIs, figure cross-references, and funding
+acknowledgements all appear in similar contexts and cause constant noise.
+
+Polar science also has its own data ecosystem. Repositories like PANGAEA \cite{pangaea},
+NSIDC, Zenodo \cite{zenodo}, the Arctic Data Center, and the Copernicus Marine
+Service each have their own DOI prefix conventions and accession number formats.
+General-purpose scientific NLP tools \cite{luan2018,wadden2019,scibert} are not
+tuned to these patterns, and they show it.
+
+We built the PolarKD Dataset Harvester as a module inside the larger PolarKD
+(Polar Knowledge Discovery) system. Given any polar science PDF, it returns a
+structured list of \texttt{DatasetRef} objects containing the dataset name, URL,
+DOI, accession number, inferred repository, the sentence it came from, and a flag
+indicating whether this is the paper's single central dataset or a secondary
+reference. Most ten-page papers run through in under 30 seconds.
+
+%% -----------------------------------------------------------------------
+\section{System Overview}
+
+PolarKD is a Streamlit application we run on a shared research server at the
+University of North Texas. It handles keyword extraction (TF-IDF, YAKE, KeyBERT),
+semantic relation extraction via local Ollama LLMs, Neo4j knowledge graph
+construction, and document Q\&A with RAG. The Dataset Harvester sits inside it as a
+self-contained submodule (\texttt{dataset\_harvester/extractor.py}) but can also be
+called directly:
+
+\begin{verbatim}
+refs = extract_from_pdf("paper.pdf")
+\end{verbatim}
+
+\noindent Each returned \texttt{DatasetRef} carries:
+
+\begin{itemize}[noitemsep, topsep=2pt]
+  \item \textbf{name}: product name (e.g., ERA5, PANGAEA.940320)
+  \item \textbf{url}: direct download or landing URL, if found
+  \item \textbf{doi}: data DOI string, if found
+  \item \textbf{accession}: repository-specific accession number
+  \item \textbf{repository\_hint}: inferred repository (e.g., pangaea, nsidc)
+  \item \textbf{raw\_citation}: the sentence in the paper where it appeared
+  \item \textbf{is\_primary}: \texttt{True} only for the single dataset the paper
+    is centrally about — what it introduces or presents as its main record
+\end{itemize}
+
+Both passes run on the same extracted text and feed into a shared deduplication
+step before output. The pipeline is shown in Figure~\ref{fig:pipeline}.
+
+\begin{figure}[t]
+\centering
+\small
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{|c|}
+\hline
+\\[-1.5ex]
+\textbf{PDF Input} \\[3pt]
+$\downarrow$ \\[2pt]
+\textbf{Text Extraction} \\
+{\footnotesize pdfplumber $\cdot$ two-column detection $\cdot$ URL reconstruction} \\[3pt]
+$\downarrow$ \\[2pt]
+\textbf{Pass 1: Regex} \\
+{\footnotesize URLs $\cdot$ DOIs $\cdot$ Accessions $\cdot$ Named products} \\[3pt]
+$\downarrow$ \\[2pt]
+\textbf{Pass 2: LLM} \\
+{\footnotesize Truncate $\cdot$ chunk $\cdot$ signal filter $\cdot$ call $\cdot$ parse $\cdot$ validate} \\[3pt]
+$\downarrow$ \\[2pt]
+\textbf{Merge, Deduplicate, Output} \\
+{\footnotesize DatasetRef list (name, url, doi, accession, is\_primary)} \\[2pt]
+\hline
+\end{tabular}
+\caption{PolarKD Dataset Harvester pipeline.}
+\label{fig:pipeline}
+\end{figure}
+
+%% -----------------------------------------------------------------------
+\section{Technical Approach}
+
+\subsection{PDF Parsing}
+
+We use \texttt{pdfplumber} \cite{pdfplumber} to extract text page by page. For
+two-column papers, which are the norm in polar science journals, we split each page
+at its horizontal midpoint and process the left and right columns separately before
+joining them. Without this step, text from the two columns gets interleaved, which
+breaks both the regex patterns and the LLM chunking. We also stitch back URLs that
+got split across a line break during PDF rendering. If the total extracted text is
+under 3,000 characters, the document is flagged as likely scanned with no embedded
+text layer.
+
+\subsection{Pass 1: Deterministic Regex Extraction}
+
+The regex pass scans the full document for six types of identifiers:
+
+\begin{enumerate}[noitemsep, topsep=2pt]
+  \item \textbf{URLs}: kept only if the domain is in our list of known data
+    repositories, or if the URL appears within 150 characters of language like
+    ``available at'' or ``downloaded from.'' Journal publisher domains are excluded.
+  \item \textbf{DOIs}: the prefix is checked against a whitelist of 14 data
+    repository DOI prefixes (Table~\ref{tab:doi}). Any DOI with a journal publisher
+    prefix is discarded.
+  \item \textbf{PANGAEA accession numbers}: matched by the pattern
+    \texttt{PANGAEA.\{5--7 digits\}}.
+  \item \textbf{Zenodo record IDs}: matched by
+    \texttt{zenodo.org/record/\{digits\}} or \texttt{zenodo.org/records/\{digits\}}.
+  \item \textbf{NSIDC accession numbers}: matched by \texttt{NSIDC-\{4 digits\}}.
+  \item \textbf{Named products}: a compiled regex over a list of more than 100
+    polar science product names, matched case-insensitively. The list covers
+    reanalysis (ERA5, JRA-55, MERRA-2, NCEP/NCAR, CFSR), satellite missions
+    (MODIS, VIIRS, AMSR2, ICESat-2, CryoSat-2, Sentinel-1 through 6, GRACE,
+    GRACE-FO, CALIPSO, SMAP, GEDI), ocean reanalysis (GLORYS, OSTIA, ORAS5,
+    ECCO, HYCOM), precipitation datasets (GPM, IMERG, GPCP, TRMM, CMORPH),
+    climate model ensembles (CMIP3, CMIP5, CMIP6, MPI-ESM, CESM, CESM2, E3SM),
+    and observation networks (FLUXNET, AmeriFlux, ICOS, SOCAT, GLODAP, ARGO),
+    among others.
+\end{enumerate}
+
+For every match, we also inspect the surrounding 180 characters for phrases like
+``we used'' or ``data were downloaded from,'' and check whether the match falls
+inside a Data Availability section. Either condition sets the \texttt{used\_in\_study}
+flag on that reference.
+
+\begin{table}[t]
+  \caption{Data-repository DOI prefixes retained by the regex pass.}
+  \label{tab:doi}
+  \small
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{ll}
+    \toprule
+    \textbf{Prefix} & \textbf{Repository} \\
+    \midrule
+    10.1594  & PANGAEA \\
+    10.5281  & Zenodo \\
+    10.7289  & NOAA NCEI \\
+    10.5067  & NASA EOSDIS / NSIDC \\
+    10.18739 & Arctic Data Center \\
+    10.6073  & BCO-DMO \\
+    10.6084  & Figshare \\
+    10.5061  & Dryad \\
+    10.3334  & ORNL DAAC \\
+    10.5285  & BODC \\
+    10.48670 & Copernicus Marine Service \\
+    10.24381 & Copernicus Climate Data Store \\
+    10.5439  & ARM Facility \\
+    10.22008 & GEUS / Greenland Data Portals \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\subsection{Pass 2: LLM-Based Extraction}
+
+The second pass finds datasets that are mentioned only by name, where a regex
+cannot help.
+
+\textbf{Pre-truncation.}
+We cut the text at the first occurrence of ``References,'' ``Bibliography,''
+``Acknowledgements,'' ``Acknowledgments,'' ``Supplementary,'' ``Funding,'' or
+``Appendix.'' The cut is only applied if that marker appears past 20\% of the
+document length (at least 20,000 characters). The guard prevents a
+``Funding'' keyword in a page header from accidentally removing the entire paper
+body.
+
+\textbf{Chunking.}
+The truncated text is split into 3,000-character chunks with 400-character overlap,
+so dataset mentions near a chunk boundary are not missed.
+
+\textbf{Signal filter.}
+Before calling the LLM, each chunk is tested against a signal regex. If there is
+no match, the chunk is skipped entirely. Signals include data language
+(``dataset,'' ``accession,'' ``downloaded from,'' ``data availability,''
+``code and data''), repository names (``zenodo,'' ``pangaea,'' ``figshare,''
+``dryad,'' ``dataverse''), the full named-product list from Pass 1 plus additional
+terms (CloudSat, WRF, NEMO, ROMS, FESOM, GlobSnow, and others), observation
+descriptors (``reanalysis,'' ``in situ,'' ``buoy,'' ``CTD,'' ``mooring,''
+``ice core,'' ``eddy covariance''), field terms (``permafrost,'' ``tundra,''
+``peatland,'' ``catchment,'' ``flux tower''), and climate model identifiers (RCP,
+SSP, GCM, HadGEM, CESM, MPI-ESM, GFDL, and others). Skipping quiet chunks
+substantially cuts API cost.
+
+\textbf{LLM call.}
+Each signal-passing chunk is sent to the LLM with a prompt asking for a JSON array
+of dataset objects with the fields: name, url, doi, accession, repository\_hint,
+raw\_citation, and is\_primary. Temperature is set to 0.
+
+\textbf{Four-layer JSON parser.}
+LLM output is not always clean JSON. We try four strategies in sequence:
+(1) strip markdown fences and call \texttt{json.loads()};
+(2) pull out the outermost \texttt{[...]} block with a regex and parse that;
+(3) find individual \texttt{\{...\}} objects if no array brackets exist;
+(4) if nothing works, log the chunk as a JSON error and move on.
+Layer 4 was added specifically to handle models like llama3 that wrap their JSON
+output in explanatory prose.
+
+\textbf{False-positive filter.}
+Every name the LLM returns is checked before being accepted. We reject names that
+match: lab instrument terms (analyzer, spectrometer, chromatograph, centrifuge);
+brand names (Whatman, Sigma-Aldrich, Thermo Fisher, Shimadzu, Agilent, Bruker);
+journal names (Biogeosciences, Geophysical Research Letters, Nature Climate Change,
+Science Advances); figure and table references (``Fig.~3a,'' ``Table~2,''
+``Supplementary Fig.''); author citations containing ``et al.''; funding body names
+(NSF, NSERC, NIH, ERC, DFG) and grant strings; acknowledgement strings longer than
+250 characters; and bare measurement terms like DOC, DIC, or ``samples.'' Names
+under three characters are also rejected.
+
+\subsection{Backend Selection and Fallback}
+
+At startup, the extractor checks for an LLM backend in this order: Azure OpenAI
+(gpt-4.1-mini by default, configurable via environment variables), then
+OpenAI (gpt-4o-mini), then local Ollama. For Ollama, it queries the
+\texttt{/api/tags} endpoint and picks the first available model from the list:
+mistral:latest, mistral:7b, llama3:latest, qwen2.5:7b, gemma3:12b. If no backend
+is found at all, the LLM pass is skipped and we return only the regex results.
+Errors in individual chunks — JSON parse failures, HTTP timeouts — are logged and
+skipped without stopping the overall run.
+
+%% -----------------------------------------------------------------------
+\section{Demonstration}
+
+The demo runs on our shared UNT research server, reached by SSH tunnel. Nothing
+needs to be installed on the attendee side.
+
+We give attendees a set of pre-loaded polar science PDFs spanning cryosphere
+observations, physical oceanography, and climate modelling. They can also upload
+their own paper. After clicking ``Extract Datasets,'' the Streamlit interface shows:
+
+\begin{enumerate}[noitemsep, topsep=2pt]
+  \item \textbf{Extraction progress}: chunks processed, signal-pass rate, LLM call
+    count.
+  \item \textbf{Pass 1 output}: each regex-found entry labeled by type (URL, DOI,
+    PANGAEA accession, named product) with its verbatim source sentence.
+  \item \textbf{Pass 2 output}: LLM-recovered name-only datasets with source
+    sentences.
+  \item \textbf{Merged DatasetRef list}: deduplicated, classified as primary or
+    cited, with repository hints and download status (direct download, collection,
+    login required, or homepage only).
+  \item \textbf{Collection expansion}: for PANGAEA parent records, the system lists
+    all child datasets and checks each for download availability via parallel HTTP
+    HEAD requests.
+\end{enumerate}
+
+Attendees can then open the Knowledge Graph view, where primary datasets appear as
+green nodes and cited datasets as blue nodes, connected to the keyword graph the LLM
+relation module builds in parallel.
+
+We use three contrasting papers to walk through the system. First, a fieldwork paper
+that names more than 15 satellite products with no DOIs or URLs: this puts the LLM
+pass and signal filter to work. Second, a data paper deposited to PANGAEA with
+explicit DOIs and accession numbers: this exercises the regex pass and PANGAEA
+collection expansion. Third, a modelling study referencing CMIP6 outputs and ERA5
+forcing: this is where the named-product matching and false-positive filter both get
+tested.
+
+%% -----------------------------------------------------------------------
+\section{Related Work}
+
+There has been substantial work on extracting structured information from scientific
+text, including named entities \cite{luan2018}, relations and events \cite{wadden2019},
+and domain-adapted language models \cite{scibert}. Dataset-specific extraction has
+received less attention. Google Dataset Search \cite{datasetsearch} takes a different
+approach, relying on schema.org metadata embedded in web pages rather than mining
+PDF text. The CORD-19 project \cite{cord19} showed what large-scale scientific NLP
+can do, but it targeted biomedical literature and did not deal with the
+repository-specific identifier conventions that matter in geoscience.
+
+What sets this harvester apart is the combination of a fast deterministic pass for
+identifier-rich text with an LLM pass for name-only mentions, together with polar
+science specificity: the DOI prefix whitelist, the named-product vocabulary, and the
+false-positive rules are all tuned to polar data repositories. Because Ollama is a
+supported backend, the pipeline can also run on an air-gapped or restricted research
+server without any cloud API access.
+
+%% -----------------------------------------------------------------------
+\section{Conclusion}
+
+The PolarKD Dataset Harvester pulls geospatial dataset references from polar science
+PDFs using a regex pass for explicit identifiers and an LLM pass for name-only
+mentions. The signal-based chunk filter reduces API cost, the four-layer JSON parser
+handles messy LLM output, and the false-positive filter keeps noise low. The system
+degrades gracefully when cloud APIs are unavailable. We plan to extend the
+named-product vocabulary to cover more geoscience domains beyond polar research, and
+to build a cross-paper co-citation graph that shows which datasets the polar science
+community relies on most.
+
+%% -----------------------------------------------------------------------
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{references}
+
+\end{document}
