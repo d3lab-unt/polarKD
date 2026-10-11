@@ -68,8 +68,12 @@ class QASystem:
             # Explicit retrieval_mode takes precedence
             self.retrieval_mode = retrieval_mode.lower()
 
+        if self.retrieval_mode in ['faiss', 'hybrid'] and not FAISS_AVAILABLE:
+            print("FAISS requested but not installed; using BM25 retrieval instead")
+            self.retrieval_mode = 'bm25'
+
         # FAISS setup (for dense retrieval)
-        self.use_faiss = self.retrieval_mode in ['faiss', 'hybrid']
+        self.use_faiss = FAISS_AVAILABLE and self.retrieval_mode in ['faiss', 'hybrid']
         self.embedding_dim = 384  # all-MiniLM-L6-v2 produces 384-dim embeddings
         self.faiss_index = None
         self.chunk_metadata = []  # Store metadata for each chunk in FAISS

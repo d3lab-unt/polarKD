@@ -1,0 +1,160 @@
+source .venv/bin/activate
+
+streamlit run frontend_light_v2.py --server.address localhost --server.port 8501
+
+
+------------------
+Causal Graph
+------------------
+
+Causal Graph — Finalized Implementation Notes
+Files
+File	Role
+causal_graph.py	Core logic — filtering, LLM extraction, graph generation
+frontend_light_v4.py	UI — buttons, dialogs, Section 4 display
+Execution Flow
+`
+1. User uploads PDF(s) → generates KG
+   └─ stored in st.session_state.processed_pdfs[file]['relations']
+        each edge: {source, relation, target, score}
+
+2. st.rerun() fires → CG button becomes ENABLED
+
+3. User clicks "Generate Causal Graph"
+   └─ show_cg_dialog = True → model selector appears
+
+4. User confirms model → cg_model_selected set → st.rerun()
+
+5. CG Processing collects all KG edges across all PDFs
+   └─ calls extract_causal_relations(all_kg_edges, model)
+
+6. extract_causal_relations() — 3 layers:
+   ├─ Layer 1: Pre-filter (_is_valid_node)
+   │     • rejects >60 chars, >5 words
+   │     • rejects sentence-starter words
+   │     • rejects _TECH_BLOCKLIST terms (ML/DL/metrics)
+   ├─ Layer 2: LLM Pass 2 (constrained prompt)
+   │     • closed whitelist of valid node names sent to LLM
+   │     • ACCEPT: physical/environmental variables only
+   │     • REJECT: methods, algorithms, metrics explicitly
+   └─ Layer 3: Post-validate
+         • discard any hallucinated node not in whitelist
+         • discard confidence < 0.4
+         • discard self-loops
+
+7. cg_relations saved to session state → st.rerun()
+
+8. Section 4 renders:
+   ├─ 4 metrics: total relations, unique nodes, root causes, terminal effects
+   ├─ Root cause tags (red)  — cause only, never an effect
+   ├─ Terminal effect tags (orange) — effect only, never a cause
+   ├─ PyVis directed graph (interactive HTML)
+   │     • red node   = root cause
+   │     • purple node = intermediate
+   │     • orange node = terminal effect
+   │     • edge width  = confidence
+   │     • edge color  = confidence (dark red → orange)
+   └─ Expandable relation table (cause, effect, label, confidence)
+Key Design Decisions
+Two-pass LLM — Pass 1 extracts KG (semantic), Pass 2 reasons causality (directional)
+KG unchanged — CG works entirely on top of stored session data
+Node roles by set logic — not LLM-assigned; computed from edge structure after extraction
+Closed whitelist — LLM cannot invent variables; must use exact KG node names
+Tech blocklist — 47 ML/method terms blocked before LLM sees the data
+Confidence threshold ≥ 0.4 — weak/uncertain links dropped automatically
+
+
+
+
+
+
+
+
+-------------------------
+
+Next Plan
+------------------------
+
+What "Causal Assumptions and Rules" Means Here
+Three distinct layers, each adding a different kind of rigour:
+
+Layer A — Domain Assumptions (Hard Knowledge)
+Pre-defined facts from climate science that override LLM decisions:
+
+Direction rules — known one-way causality:
+
+
+GHG emissions → temperature       (never reverse)
+temperature → sea ice extent      (warming melts ice, not reverse)
+sea ice → albedo                  (less ice = lower albedo)
+albedo → radiative forcing        (lower albedo = more absorbed heat)
+Forbidden edges — physically impossible directions:
+
+
+sea ice → temperature             (ice doesn't warm the atmosphere)
+precipitation → cloud cover       (effect can't cause its own cause)
+Required edges — known links to always include regardless of LLM output:
+
+
+CO2 concentration → surface temperature    (always causal, always this direction)
+These live in a new causal_assumptions.py as configurable rule tables — no hardcoding in logic.
+
+Layer B — Graph Structure Rules (Formal Causal Inference)
+Rules that enforce structural properties of a valid causal graph:
+
+DAG enforcement — detect cycles (A→B→C→A), break them by removing the lowest-confidence edge. A cycle means the LLM contradicted itself.
+
+Transitivity marking — if A→B and B→C exist, mark A→C as an implied indirect path (shown differently in the graph, e.g. dashed edge).
+
+Confounder detection — if variable X causes both Y and Z, flag X as a common cause. Useful for the user to know a spurious Y↔Z correlation may exist.
+
+Collider detection — if both X and Z cause Y, flag Y as a collider node. These are important in causal inference (conditioning on them opens spurious paths).
+
+Layer C — Algorithmic Causal Discovery (Statistical)
+You already have PCMCI in your repo. This layer uses statistical methods to validate or score the LLM-extracted edges:
+
+PC algorithm — constraint-based structure learning from the confidence scores
+PCMCI — if your paper data has time series, causal links can be tested statistically (lag-aware)
+Confidence re-scoring — use statistical independence test results to adjust LLM confidence scores
+This is optional and computationally heavier, but very powerful if the underlying data is available.
+
+Execution Plan — What Goes Where
+
+KG edges (unchanged)
+      ↓
+causal_graph.py  ─ Layer 1 pre-filter (existing: blocklist, sentence filter)
+      ↓
+causal_graph.py  ─ Layer 2 LLM prompt (existing: constrained extraction)
+      ↓
+causal_graph.py  ─ Layer 3 post-validate (existing: whitelist + confidence)
+      ↓
+[NEW] causal_assumptions.py
+      ├─ Apply direction rules  (flip wrong-way edges)
+      ├─ Apply forbidden edges  (remove physically impossible pairs)
+      ├─ Apply required edges   (inject known causal facts)
+      ├─ Enforce DAG            (break cycles by lowest confidence)
+      ├─ Detect confounders     (tag common-cause nodes)
+      └─ Detect colliders       (tag common-effect nodes)
+      ↓
+[Optional] PCMCI validation pass
+      ↓
+generate_causal_graph()  ─ colour nodes by role (forcing / mediator / response)
+New File: causal_assumptions.py
+Contains:
+
+DIRECTION_RULES — list of (cause_pattern, effect_pattern, reason) tuples
+FORBIDDEN_EDGES — list of (source, target) pairs that are impossible
+REQUIRED_EDGES — list of (cause, effect, label, confidence) to always inject
+apply_assumptions(causal_relations) — applies all rules, returns cleaned list
+enforce_dag(causal_relations) — detects and breaks cycles
+detect_graph_roles(causal_relations) — tags confounders and colliders
+causal_graph.py calls apply_assumptions() between Layer 3 and generate_causal_graph().
+
+Priority Order
+Layer	Effort	Impact
+A — Direction + forbidden rules	Low	High — fixes physically wrong edges immediately
+B — DAG enforcement	Medium	High — removes self-contradictions
+B — Confounder/collider detection	Medium	Medium — richer graph insight
+A — Required edges	Low	Medium — fills gaps LLM misses
+C — PCMCI validation	High	Very high — but needs time-series data
+Recommended starting point: Layer A (direction rules + forbidden edges) + DAG enforcement. These three give the biggest quality improvement with the least complexity.
