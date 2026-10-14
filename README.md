@@ -1,4 +1,4 @@
-# PDF to Knowledge Graph Generator
+# PolarKD
 
 > **🆕 Update:** The new, updated version, **PolarKDv2** (LLM-based causal discovery on top of PolarKD), is now available in the [`PolarDS 2026`](./PolarDS%202026/) folder. See its [README](./PolarDS%202026/README.md) for setup and usage. The documentation below is for the previous version.
 
